@@ -16,14 +16,18 @@ parser.add_argument('--snapshot', metavar='snapshot', type=str, default=None,
                     help='snapshot file to start training (default None, example: snapshot-1000)')
 parser.add_argument('--maxiters', metavar='maxiters', type=int, default=10000,
                     help='max number of iterations (default 10000)')
-
+parser.add_argument('--working-dir', metavar='working-dir', type=str, default=None,
+                    help='working directory where to find the project')
 args = parser.parse_args()
 
 print("Imported DLC!")
 print('Configuration selected: ')
 print(args)
 task = args.task
-basepath=os.path.dirname(os.path.abspath('dlc-proc.py'))
+if args.working_dir is None:
+    basepath=os.path.dirname(os.path.abspath('training.py'))
+else:
+    basepath = args.working_dir
 print('the base path is: ', basepath)
 
 videoname=args.video
