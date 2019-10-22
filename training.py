@@ -39,7 +39,7 @@ if not os.path.exists(videoname):
         video = []
         all_videos = list(filter(lambda x: x.endswith('.avi'), os.listdir(v)))
         for vid in all_videos:
-            video.append(os.path.join(videoname, vid))
+            video.append(os.path.join(v, vid))
     else:
         raise FileNotFoundError('File {} not found.'.format(v))
 
@@ -52,7 +52,7 @@ elif os.path.exists(videoname) and os.path.isdir(videoname):
         video.append(os.path.join(videoname, v))
 else:
     raise FileNotFoundError('File {} not found.'.format(videoname))
-
+print('VIDEO PATHH!!!!!!!!!!!!!', video)
 #config path definition
 config_path = os.path.join(basepath, task, 'config.yaml')
 print('config path: ', config_path)
