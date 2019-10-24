@@ -21,6 +21,7 @@ import os,  subprocess, deeplabcut
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import shutil
 import requests
 print("Imported DLC!")
 basepath=os.path.dirname(os.path.abspath('test.py'))
@@ -40,13 +41,17 @@ net_type='resnet_50' #'mobilenet_v2_0.35' #'resnet_50'
 augmenter_type='default' #'tensorpack'
 numiter=5
 
+if os.path.exists('path_config.txt'):
+    print('Project already created. Deleting to start fresh')
+    project_path = open('path_config.txt','r').readline()
+    shutil.rmtree(project_path)
+    os.remove('path_config.txt')
 print("CREATING PROJECT")
 path_config_file=deeplabcut.create_new_project(task,scorer,video,copy_videos=True)
-if path_config_file is None:
-    print('Reading path config from file.')
-    path_config_file = open('path_config.txt','r').readline()
-else:
-    open('path_config.txt', 'w+').write(path_config_file)
+if path_config_file is not None:
+    open('path_config.txt', 'w+').write(os.path.dirname(path_config_file))
+
+
 # if path_config_file is None:
 #     path_config_file = '/Users/ari/funanatomy/quick-dlc/TEST-Alex-2019-10-23/config.yaml'
 
