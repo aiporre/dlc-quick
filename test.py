@@ -42,9 +42,13 @@ numiter=5
 
 print("CREATING PROJECT")
 path_config_file=deeplabcut.create_new_project(task,scorer,video,copy_videos=True)
-
 if path_config_file is None:
-    path_config_file = 'TEST-Alex-2019-10-23/config.yaml'
+    print('Reading path config from file.')
+    path_config_file = open('path_config.txt','w').readline()
+else:
+    open('path_config.txt', 'r').write(path_config_file)
+# if path_config_file is None:
+#     path_config_file = '/Users/ari/funanatomy/quick-dlc/TEST-Alex-2019-10-23/config.yaml'
 
 cfg=deeplabcut.auxiliaryfunctions.read_config(path_config_file)
 cfg['numframes2pick']=5
@@ -73,9 +77,10 @@ dataFrame.to_hdf(os.path.join(cfg['project_path'],'labeled-data',videoname,"Coll
 
 print("Plot labels...")
 
-deeplabcut.check_labels(path_config_file)
+# deeplabcut.check_labels(path_config_file)
 
 print("CREATING TRAININGSET")
+print('net type: ',net_type)
 deeplabcut.create_training_dataset(path_config_file,net_type=net_type,augmenter_type=augmenter_type)
 
 posefile=os.path.join(cfg['project_path'],'dlc-models/iteration-'+str(cfg['iteration'])+'/'+ cfg['Task'] + cfg['date'] + '-trainset' + str(int(cfg['TrainingFraction'][0] * 100)) + 'shuffle' + str(1),'train/pose_cfg.yaml')
