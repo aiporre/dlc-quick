@@ -44,9 +44,9 @@ print("CREATING PROJECT")
 path_config_file=deeplabcut.create_new_project(task,scorer,video,copy_videos=True)
 if path_config_file is None:
     print('Reading path config from file.')
-    path_config_file = open('path_config.txt','w').readline()
+    path_config_file = open('path_config.txt','r').readline()
 else:
-    open('path_config.txt', 'r').write(path_config_file)
+    open('path_config.txt', 'w+').write(path_config_file)
 # if path_config_file is None:
 #     path_config_file = '/Users/ari/funanatomy/quick-dlc/TEST-Alex-2019-10-23/config.yaml'
 
