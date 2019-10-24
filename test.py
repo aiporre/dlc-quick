@@ -210,7 +210,7 @@ print("CHANGING training parameters to end quickly!")
 deeplabcut.auxiliaryfunctions.write_plainconfig(posefile,DLC_config)
 
 print("TRAINING shuffle 2, with smaller allocated memory")
-deeplabcut.train_network(path_config_file,shuffle=2,allow_growth=True)
+deeplabcut.train_network(path_config_file,shuffle=2)
 
 print("ANALYZING some individual frames")
 deeplabcut.analyze_time_lapse_frames(path_config_file,os.path.join(cfg['project_path'],'labeled-data/reachingvideo1/'))
