@@ -5,6 +5,11 @@ import os
 import yaml
 from wx.lib.masked.numctrl import NumCtrl
 import sys
+import matplotlib
+matplotlib.use('Agg')
+print('importing deeplab cut..')  
+import deeplabcut as d
+print('Done')
 
 # import deeplabcut as d
 def get_videos(videosList):
@@ -562,8 +567,11 @@ class TrainNetwork(wx.Frame):
 
 
         # choice iteration from configuration file
+        config = parser_yaml(self.config)
         iterationLbl = wx.StaticText(self.panel, -1, "Iteration")
-        self.iteration = wx.Choice(self.panel, id=-1, choices=self.find_iterations())
+        current_iteration = 'iteration-'+str(config['iteration'])
+        self.iteration = wx.Choice(self.panel, id=-1, choices=[current_iteration] + self.find_iterations())
+        self.iteration.SetSelection(0)
         pose_config = self.read_fields()
 
         # default fields from the pose_cfg.yaml file:
@@ -819,7 +827,7 @@ class TrainNetwork(wx.Frame):
         pose_config['min_input_size'] = int(self.min_input_size.GetValue())
         pose_config['minsize'] = int(self.minsize.GetValue())
         pose_config['mirror'] = self.mirror.GetValue()
-        pose_config['multi_step'] = [self.multi_step_1.GetValue(), self.multi_step_2.GetValue()]
+        pose_config['multi_step'] = [[float(self.multi_step_1.GetValue()), int(self.multi_step_2.GetValue())]]
         pose_config['net_type'] = self.net_type.GetValue()
         pose_config['num_joints'] = int(self.num_joints.GetValue())
         pose_config['pos_dist_thresh'] = int(self.pos_dist_thresh.GetValue())
@@ -1429,8 +1437,8 @@ class LabelPredictions(wx.Frame):
         if outputframerate < 1:
             outputframerate = None
         bodyParts = get_radiobutton_status(self.radioButtons)
-        d.create_labeled_video(self.config, videos = self.videos, videotype=self.videoType.GetValue(), displayedbodyparts=bodyparts,
-                               shuffle=int(self.shuffle), filtered=self.filtered.GetValue(), save_frames= self.saveFrames.GetValue(),
+        d.create_labeled_video(self.config, videos = self.videos, videotype=self.videoType.GetValue(), displayedbodyparts=bodyParts,
+                               shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(), save_frames= self.saveFrames.GetValue(),
                                codec=self.codec.GetValue(), outputframerate=outputframerate, draw_skeleton=self.drawSkeleton.GetValue())
         self.Close()
 
