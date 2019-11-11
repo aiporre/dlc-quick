@@ -619,6 +619,10 @@ class TrainNetwork(wx.Frame):
         max_itersLbl = wx.StaticText(self.panel, -1, "Max iters")
         self.max_iters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=sys.maxsize, initial=5000,
                                               inc=1)
+        save_itersLbl = wx.StaticText(self.panel, -1, "save_iters")
+        self.save_iters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=sys.maxsize, initial=pose_config['save_iters'],inc=1)
+
+
         # inputSizer.Add(max_itersLbl, 0, wx.EXPAND, 2)
         # inputSizer.Add(self.max_iters, 0, wx.EXPAND, 2)
 
@@ -694,9 +698,6 @@ class TrainNetwork(wx.Frame):
         self.pos_dist_thresh.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.pos_dist_thresh))
 
 
-        save_itersLbl = wx.StaticText(self.panel, -1, "save_iters")
-
-        self.save_iters = wx.SpinCtrl(self.panel, id=-1, min=1, max=sys.maxsize, initial=int(pose_config['save_iters']))
 
         scale_jitter_loLbl = wx.StaticText(self.panel, -1, "scale_jitter_lo")
         self    .scale_jitter_lo = wx.TextCtrl(self.panel,-1,str(pose_config["scale_jitter_lo"]))
@@ -868,8 +869,8 @@ class TrainNetwork(wx.Frame):
         d.auxiliaryfunctions.write_plainconfig(pose_config_file, pose_config)
         d.train_network(self.config, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
                         saveiters=pose_config['save_iters'])
-        self.Close()
         print('Training finished')
+
     def find_iterations(self):
         '''find the iterations given a config file.'''
         # import deeplabcut
@@ -892,18 +893,21 @@ class TrainNetwork(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8:
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 or chr(keycode)=='.' and ('.' not in raw_value):
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
+
     def onAddStep(self,event):
         def onOk(event,parent,frame):
             line = frame.lr.GetValue()
@@ -1281,18 +1285,20 @@ class FilterPredictions(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 :
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8  or chr(keycode)=='.' and '.' not in raw_value:
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
 class PlotPredictions(wx.Frame):
     def __init__(self,parent,title='Plot predictions',config=None, videos=[]):
@@ -1384,18 +1390,20 @@ class PlotPredictions(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 :
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8  or chr(keycode)=='.' and '.' not in raw_value:
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
 class LabelPredictions(wx.Frame):
     def __init__(self,parent,title='Label predictions',config=None, videos=[]):
@@ -1516,18 +1524,21 @@ class LabelPredictions(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 :
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8  or chr(keycode)=='.' and '.' not in raw_value:
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
+
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150,25),type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
 
@@ -1721,18 +1732,21 @@ class ExtractOutliers(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 :
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8  or chr(keycode)=='.' and '.' not in raw_value:
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
+
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150,25),type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
 
@@ -1908,7 +1922,6 @@ class AnalyzeVideos(wx.Frame):
         d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
                          shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
                          destfolder=destfolder)
-        self.Close()
 
     def onAddVideo(self,event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
@@ -1942,18 +1955,20 @@ class AnalyzeVideos(wx.Frame):
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit():
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8 :
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def force_numeric_float(self, event, edit):
         raw_value =  edit.GetValue().strip()
         keycode = event.GetKeyCode()
         if keycode < 255:
             # valid ASCII
-            if chr(keycode).isdigit() or chr(keycode)=='.' and '.' not in raw_value:
-                # Valid alphanumeric character
+            if chr(keycode).isdigit() or keycode==8  or chr(keycode)=='.' and ('.' not in raw_value):
                 event.Skip()
+        if keycode==314 or keycode==316:
+            event.Skip()
 
     def on_new_frame(self, event,frame_type):
         if frame_type is None or len(frame_type)==0: # empty string:
