@@ -5,6 +5,11 @@ import os
 import yaml
 from wx.lib.masked.numctrl import NumCtrl
 import sys
+import matplotlib
+matplotlib.use('Agg')
+print('importing deeplab cut..')
+import deeplabcut as d
+print('Done')
 
 # import deeplabcut as d
 def get_videos(videosList):
@@ -562,8 +567,11 @@ class TrainNetwork(wx.Frame):
 
 
         # choice iteration from configuration file
+        config = parser_yaml(self.config)
         iterationLbl = wx.StaticText(self.panel, -1, "Iteration")
-        self.iteration = wx.Choice(self.panel, id=-1, choices=self.find_iterations())
+        current_iteration = 'iteration-'+str(config['iteration'])
+        self.iteration = wx.Choice(self.panel, id=-1, choices=[current_iteration] + self.find_iterations())
+        self.iteration.SetSelection(0)
         pose_config = self.read_fields()
 
         # # default fields from the pose_cfg.yaml file:
@@ -1500,8 +1508,8 @@ class LabelPredictions(wx.Frame):
         if outputframerate < 1:
             outputframerate = None
         bodyParts = get_radiobutton_status(self.radioButtons)
-        d.create_labeled_video(self.config, videos = self.videos, videotype=self.videoType.GetValue(), displayedbodyparts=bodyparts,
-                               shuffle=int(self.shuffle), filtered=self.filtered.GetValue(), save_frames= self.saveFrames.GetValue(),
+        d.create_labeled_video(self.config, videos = self.videos, videotype=self.videoType.GetValue(), displayedbodyparts=bodyParts,
+                               shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(), save_frames= self.saveFrames.GetValue(),
                                codec=self.codec.GetValue(), outputframerate=outputframerate, draw_skeleton=self.drawSkeleton.GetValue())
         self.Close()
 
