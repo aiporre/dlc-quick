@@ -614,17 +614,10 @@ class TrainNetwork(wx.Frame):
         # self.datasetType = wx.TextCtrl(self.panel, -1, pose_config['dataset_type'])
 
         displayItersLbl = wx.StaticText(self.panel,-1,"Display iters")
-<<<<<<< Updated upstream
-        self.displayIters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=1000000000, initial=pose_config['display_iters'],inc=1)
-
-        max_itersLbl = wx.StaticText(self.panel, -1, "Max iters")
-        self.max_iters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=1000000000, initial=5000,
-=======
         self.displayIters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=sys.maxsize, initial=pose_config['display_iters'],inc=1)
 
         max_itersLbl = wx.StaticText(self.panel, -1, "Max iters")
         self.max_iters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=sys.maxsize, initial=5000,
->>>>>>> Stashed changes
                                               inc=1)
         # inputSizer.Add(max_itersLbl, 0, wx.EXPAND, 2)
         # inputSizer.Add(self.max_iters, 0, wx.EXPAND, 2)
@@ -703,11 +696,7 @@ class TrainNetwork(wx.Frame):
 
         save_itersLbl = wx.StaticText(self.panel, -1, "save_iters")
 
-<<<<<<< Updated upstream
-        self.save_iters = wx.SpinCtrl(self.panel, id=-1, min=1, max=1000000000, initial=pose_config['save_iters'])
-=======
         self.save_iters = wx.SpinCtrl(self.panel, id=-1, min=1, max=sys.maxsize, initial=int(pose_config['save_iters']))
->>>>>>> Stashed changes
 
         scale_jitter_loLbl = wx.StaticText(self.panel, -1, "scale_jitter_lo")
         self    .scale_jitter_lo = wx.TextCtrl(self.panel,-1,str(pose_config["scale_jitter_lo"]))
