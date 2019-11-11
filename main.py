@@ -828,8 +828,6 @@ class TrainNetwork(wx.Frame):
         pose_config['bottomheight'] = int(self.bottomheight.GetValue())
         pose_config['crop'] = self.crop.GetValue()
         pose_config['cropration'] = float(self.crop.GetValue())
-        pose_config['dataset'] = self.dataset.GetPath()
-        pose_config['dataset_type'] = self.datasetType.GetValue()
         pose_config['display_iters'] = int(self.displayIters.GetValue())
         pose_config['global_scale'] = float(self.displayIters.GetValue())
         if not self.initWeights.GetValue() == 'resnet_v1_50.ckpt':
@@ -837,17 +835,17 @@ class TrainNetwork(wx.Frame):
         pose_config['intermediate_supervision'] = self.intermediateSupervision.GetValue()
         pose_config['intermediate_supervision_layer'] = int(self.intermediate_supervision_layer.GetValue())
         pose_config['leftwidth'] = int(self.leftwidth.GetValue())
-        pose_config['location_refinement'] = self.location_refinement.GetValue()
-        pose_config['locref_huber_loss'] = self.locref_huber_loss.GetValue()
-        pose_config['locref_loss_weight'] = float(self.locref_loss_weight.GetValue())
-        pose_config['locref_stdev'] = float(self.locref_stdev.GetValue())
         pose_config['max_input_size'] = int(self.max_input_size.GetValue())
         pose_config['min_input_size'] = int(self.min_input_size.GetValue())
         pose_config['minsize'] = int(self.minsize.GetValue())
         pose_config['mirror'] = self.mirror.GetValue()
-        pose_config['multi_step'] = [self.multi_step_1.GetValue(), self.multi_step_2.GetValue()]
+
+        count = self.multistep.GetItemCount()
+        learning_rates = [self.multistep.GetItem(itemIdx=e, col=0).GetText() for e in range(count)]
+        iterations = [self.multistep.GetItem(itemIdx=e, col=1).GetText() for e in range(count)]
+        pose_config['multi_step'] = [[float(lr), int(it)] for lr, it in zip(learning_rates, iterations)]
+
         pose_config['net_type'] = self.net_type.GetValue()
-        pose_config['num_joints'] = int(self.num_joints.GetValue())
         pose_config['pos_dist_thresh'] = int(self.pos_dist_thresh.GetValue())
         pose_config['rightwidth'] = int(self.rightwidth.GetValue())
         pose_config['save_iters'] = int(self.save_iters.GetValue())
@@ -856,6 +854,8 @@ class TrainNetwork(wx.Frame):
         pose_config['topheight'] = int(self.topheight.GetValue())
         config = parser_yaml(self.config)
         pose_config['project_path'] = pose_config['project_path']
+        print('CONFIG POSE:')
+        print(pose_config)
         import deeplabcut as d
         d.auxiliaryfunctions.write_plainconfig(pose_config_file, pose_config)
         d.train_network(self.config, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
