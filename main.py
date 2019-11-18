@@ -1204,7 +1204,7 @@ class FilterPredictions(wx.Frame):
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".mp4")
+        self.videoType = wx.TextCtrl(self.panel, -1, "avi")
 
         filterTypeLbl = wx.StaticText(self.panel, -1, "Filter type:")
         self.filterType = wx.Choice(self.panel, id=-1, choices=['arima', 'median'])
@@ -1271,9 +1271,10 @@ class FilterPredictions(wx.Frame):
     def onFilter(self, event):
         filterType = self.filterType.GetString(self.filterType.GetCurrentSelection())
         destfolder = None if self.destfolder.GetPath()=='' else self.destfolder.GetPath()
+        print("Input video: ", self.targetVideos.GetPath())
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.filterpredictions(self.config, video=self.targetVideos.GetPath(), videotype=self.videoType.GetValue(),
+        d.filterpredictions(self.config, [self.targetVideos.GetPath()], videotype=self.videoType.GetValue(),
                             shuffle=int(self.shuffle.GetValue()), filtertype=filterType,
                             windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
                             ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
@@ -1406,12 +1407,13 @@ class PlotPredictions(wx.Frame):
             event.Skip()
 
 class LabelPredictions(wx.Frame):
-    def __init__(self,parent,title='Label predictions',config=None, videos=[]):
+    def __init__(self,parent,title='Label predictions',config=None, videos=[], destfolder=None):
         super(LabelPredictions, self).__init__(parent, title=title, size=(640, 500))
         self.panel = MainPanel(self)
         self.config = config
         self.WIDTHOFINPUTS = 600
         self.videos = videos
+        self.destfolderParent = destfolder
         config = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Label predictions")
@@ -1446,7 +1448,7 @@ class LabelPredictions(wx.Frame):
                 items[k].Bind(wx.EVT_CHECKBOX, lambda event: self.onRadioButton(event, ''))
         # codec
         codecLbl = wx.StaticText(self.panel, -1, "Codec:")
-        self.codec = wx.TextCtrl(self.panel, -1, ".mp4v")
+        self.codec = wx.TextCtrl(self.panel, -1, "mp4v")
 
         # Output Frame Rate
         outputFrameRateLbl = wx.StaticText(self.panel, -1, "Output Frame Rate:")
@@ -1459,7 +1461,7 @@ class LabelPredictions(wx.Frame):
         self.drawSkeleton.SetValue(False)
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
-        self.destfolder = wx.DirPickerCtrl(self.panel, -1)
+        self.destfolder = wx.DirPickerCtrl(self.panel, -1, path=self.destfolderParent)
 
         # create labeeled video
         labelButton = wx.Button(self.panel, label="Create Labeled Video")
@@ -1515,9 +1517,14 @@ class LabelPredictions(wx.Frame):
         if outputframerate < 1:
             outputframerate = None
         bodyParts = get_radiobutton_status(self.radioButtons)
+        if len(self.destfolder.GetPath())==0:
+            destfolder = self.destfolderParent
+        else:
+            destfolder = self.destfolder.GetPath()
+        print('VIDEOS: ', self.videos)
         d.create_labeled_video(self.config, videos = self.videos, videotype=self.videoType.GetValue(), displayedbodyparts=bodyParts,
                                shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(), save_frames= self.saveFrames.GetValue(),
-                               codec=self.codec.GetValue(), outputframerate=outputframerate, draw_skeleton=self.drawSkeleton.GetValue())
+                               codec=self.codec.GetValue(), outputframerate=outputframerate, draw_skeleton=self.drawSkeleton.GetValue(), destfolder=destfolder)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -1989,7 +1996,8 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = LabelPredictions(self.GetParent(), config=self.config, videos=videos)
+            destfolder = None if len(self.destfolder.GetPath())==0 else self.destfolder.GetPath()
+            frame = LabelPredictions(self.GetParent(), config=self.config, videos=videos, destfolder=destfolder)
         elif frame_type == 'extract outliers':
             count = self.videosList.GetItemCount()
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
