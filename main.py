@@ -20,14 +20,15 @@ def get_videos(videosList):
         videos.append(item.GetText())
     return videos
 
-def find_yaml():
+def find_yaml(wd=None):
     '''
     Find the most likely yaml config file in the current directory
+    wd:working directory to search for the yaml
     :return:
     '''
     config_yamls = []
     yamls = []
-    cwd = os.getcwd()
+    cwd = os.getcwd() if wd is None else wd
     for dirpath, dnames, fnames in os.walk(cwd):
         for f in fnames:
             if f.endswith("config.yaml"):
