@@ -20,10 +20,10 @@ parser.add_argument('--send', metavar='send', type=str, default='y',
 # parse args
 args = parser.parse_args()
 # create password file. not secure XS
-if not os.path.exists('pwd.txt'):
-    with open("pwd.txt", "w+", encoding="utf-8") as f:
-        password = getpass(prompt='Give ssh password: ')
-        f.write(password)
+# if not os.path.exists('pwd.txt'):
+#     with open("pwd.txt", "w+", encoding="utf-8") as f:
+#         password = getpass(prompt='Give ssh password: ')
+#         f.write(password)
 
 transferprojects(args)
 convertconfig(args)
