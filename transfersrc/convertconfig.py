@@ -1,5 +1,5 @@
 import argparse
-from transfersrc.utils import find_yaml, parser_yaml
+from .utils import find_yaml, parser_yaml
 
 parser = argparse.ArgumentParser(description='Run the dlc projects.')
 parser.add_argument('--path', metavar='path', type=str, default='analyzed_videos',

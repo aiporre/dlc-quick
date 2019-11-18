@@ -73,7 +73,10 @@ def convertconfig(args):
         config['project_path'] = projectpath
         d.auxiliaryfunctions.write_config(config_path, config)
     else:
+        task = os.path.basename(projectpath)
+        command = "'conda activate dlc-windowsGPU | python dlc-projects/quick-dlc/transfersrc/convertconfig.py " \
+                  "--path dlc-projects/{}'".format(task)
+        print(command)
         subprocess.run(
-            ["ssh", "-t", "{}@{}".format(args.user, args.ip),
-             "'conda activate dlc-windowsGPU | python dlc-projects/convertconfig.py --send n --path dlc-projects/quicl-dlc/transfersrc/{}'".format(projectpath)])
+            ["ssh", "-t", "{}@{}".format(args.user, args.ip), command])
 
