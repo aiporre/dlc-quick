@@ -15,7 +15,7 @@ print('Importing dlc:')
 import deeplabcut as d
 print('done')
 config = parser_yaml(config_path)
-config['project_path'] = projectpath
+config['project_path'] = os.path.abspath(projectpath)
 print("ppppa: ",os.path.abspath(projectpath))
 new_proj_path = os.path.abspath(projectpath)
 
