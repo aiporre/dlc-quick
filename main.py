@@ -6,6 +6,7 @@ import yaml
 from wx.lib.masked.numctrl import NumCtrl
 import sys
 import matplotlib
+import glob
 matplotlib.use('Agg')
 print('importing deeplab cut..')
 import deeplabcut as d
@@ -384,7 +385,10 @@ class AddNewVideos(wx.Frame):
         if listOrPath == 'target videos path':
             video_path = self.videosPath.GetPath()
             print('video path: ', video_path)
-            videos = [os.path.join(video_path,v) for v in os.listdir(video_path) if v.endswith('.avi')]
+            videos = [v for v in glob.glob(os.path.join(video_path,"**"),recursive=True) if v.endswith('.avi')]
+            print('NEW VIDEOS FOUND:')
+            for v in videos:
+                print(v)
             d.add_new_videos(self.config, videos=videos,copy_videos=self.copyVideos.GetValue())
         elif listOrPath  == 'target videos list':
             videos = get_videos(self.videosList)
