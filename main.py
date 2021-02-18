@@ -12,6 +12,9 @@ print('importing deeplab cut..')
 import deeplabcut as d
 print('Done')
 
+CWD = os.getcwd()
+
+
 # import deeplabcut as d
 def get_videos(videosList):
     count = videosList.GetItemCount()
@@ -323,12 +326,12 @@ class AddNewVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image("figures/iconplus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image("figures/iconMinus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 
@@ -461,12 +464,12 @@ class NewProjectFrame(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image("figures/iconplus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.newProjectFrame, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image("figures/iconMinus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.newProjectFrame, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 
@@ -635,7 +638,7 @@ class TrainNetwork(wx.Frame):
         self.globalScale = wx.SpinCtrlDouble(self.panel, id=-1, min=0, max=1, initial=pose_config['global_scale'],inc=0.1)
 
         initWeightsLbl = wx.StaticText(self.panel, -1, "Initial weights")
-        self.initWeights = wx.TextCtrl(self.panel, -1, os.path.basename(pose_config['init_weights']))
+        self.initWeights = wx.TextCtrl(self.panel, -1, pose_config['init_weights'])
 
         intermediateSupervisionLbl = wx.StaticText(self.panel, -1, "Intermediate supervision")
         self.intermediateSupervision = wx.CheckBox(self.panel, -1, "")
@@ -844,8 +847,7 @@ class TrainNetwork(wx.Frame):
         pose_config['cropration'] = float(self.crop.GetValue())
         pose_config['display_iters'] = int(self.displayIters.GetValue())
         pose_config['global_scale'] = float(self.displayIters.GetValue())
-        if not self.initWeights.GetValue() == 'resnet_v1_50.ckpt':
-            pose_config['init_weights'] = self.initWeights.GetValue()
+        pose_config['init_weights'] = self.initWeights.GetValue()
         pose_config['intermediate_supervision'] = self.intermediateSupervision.GetValue()
         pose_config['intermediate_supervision_layer'] = int(self.intermediate_supervision_layer.GetValue())
         pose_config['leftwidth'] = int(self.leftwidth.GetValue())
@@ -985,7 +987,8 @@ class EvaluaterNetwork(wx.Frame):
         self.showError.SetValue(False)
 
         comparisionBodyPartsLbl = wx.StaticText(self.panel, -1, "Comparision body parts")
-
+        print(config['bodyparts'])
+        print(len(config['bodyparts']))
         comparisionBodyParts, items = self.MakeStaticBoxSizer(boxlabel='body parts',itemlabels=config['bodyparts']+['All'],type='checkBox')
 
         self.radioButtons = items
@@ -1080,22 +1083,30 @@ class EvaluaterNetwork(wx.Frame):
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150,25),type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
 
-        sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+        h_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         items = {}
-        for label in itemlabels:
-            if type=='block':
-                item = BlockWindow(self.panel, label=label, size=size)
-            elif type=='button':
-                item = wx.Button(self.panel, label=label)
-            elif type=='radioButton':
-                item = wx.RadioButton(self.panel, label=label, size=size)
-            elif type=='checkBox':
-                item = wx.CheckBox(self.panel, -1, label=label)
-            else:
-                item = BlockWindow(self.panel, label=label, size=size)
-            items[label] = item
-            sizer.Add(item, 0, wx.EXPAND, 2)
-        return sizer, items
+        print(itemlabels)
+        for i in range(len(itemlabels)//10+1):
+            # for groups of 10 items create a sizer
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            for j in range(10):
+                if 10*i+j == len(itemlabels):
+                    break
+                label = itemlabels[10*i+j]
+                if type=='block':
+                    item = BlockWindow(self.panel, label=label, size=size)
+                elif type=='button':
+                    item = wx.Button(self.panel, label=label)
+                elif type=='radioButton':
+                    item = wx.RadioButton(self.panel, label=label, size=size)
+                elif type=='checkBox':
+                    item = wx.CheckBox(self.panel, -1, label=label)
+                else:
+                    item = BlockWindow(self.panel, label=label, size=size)
+                items[label] = item
+                sizer.Add(item, 0, wx.EXPAND, 2)
+            h_sizer.Add(sizer, 0, wx.EXPAND, 2)
+        return h_sizer, items
 
     def find_iterations(self):
         '''find the iterations given a config file.'''
@@ -1464,9 +1475,9 @@ class LabelPredictions(wx.Frame):
         drawSkeletonLbl = wx.StaticText(self.panel, -1, "Draw skeleton:")
         self.drawSkeleton = wx.CheckBox(self.panel, -1, "");
         self.drawSkeleton.SetValue(False)
-
+        parent = '' if self.destfolderParent is None else self.destfolderParent
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
-        self.destfolder = wx.DirPickerCtrl(self.panel, -1, path=self.destfolderParent)
+        self.destfolder = wx.DirPickerCtrl(self.panel, -1, path=parent)
 
         # create labeeled video
         labelButton = wx.Button(self.panel, label="Create Labeled Video")
@@ -1554,22 +1565,30 @@ class LabelPredictions(wx.Frame):
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150,25),type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
 
-        sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+        h_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         items = {}
-        for label in itemlabels:
-            if type=='block':
-                item = BlockWindow(self.panel, label=label, size=size)
-            elif type=='button':
-                item = wx.Button(self.panel, label=label)
-            elif type=='radioButton':
-                item = wx.RadioButton(self.panel, label=label, size=size)
-            elif type=='checkBox':
-                item = wx.CheckBox(self.panel, -1, label=label)
-            else:
-                item = BlockWindow(self.panel, label=label, size=size)
-            items[label] = item
-            sizer.Add(item, 0, wx.EXPAND, 2)
-        return sizer, items
+        print(itemlabels)
+        for i in range(len(itemlabels)//10+1):
+            # for groups of 10 items create a sizer
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            for j in range(10):
+                if 10*i+j == len(itemlabels):
+                    break
+                label = itemlabels[10*i+j]
+                if type=='block':
+                    item = BlockWindow(self.panel, label=label, size=size)
+                elif type=='button':
+                    item = wx.Button(self.panel, label=label)
+                elif type=='radioButton':
+                    item = wx.RadioButton(self.panel, label=label, size=size)
+                elif type=='checkBox':
+                    item = wx.CheckBox(self.panel, -1, label=label)
+                else:
+                    item = BlockWindow(self.panel, label=label, size=size)
+                items[label] = item
+                sizer.Add(item, 0, wx.EXPAND, 2)
+            h_sizer.Add(sizer, 0, wx.EXPAND, 2)
+        return h_sizer, items
 
     def onRadioButton(self, event, source):
         if source == 'All':
@@ -1762,22 +1781,30 @@ class ExtractOutliers(wx.Frame):
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150,25),type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
 
-        sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
+        h_sizer = wx.StaticBoxSizer(box, wx.HORIZONTAL)
         items = {}
-        for label in itemlabels:
-            if type=='block':
-                item = BlockWindow(self.panel, label=label, size=size)
-            elif type=='button':
-                item = wx.Button(self.panel, label=label)
-            elif type=='radioButton':
-                item = wx.RadioButton(self.panel, label=label, size=size)
-            elif type=='checkBox':
-                item = wx.CheckBox(self.panel, -1, label=label)
-            else:
-                item = BlockWindow(self.panel, label=label, size=size)
-            items[label] = item
-            sizer.Add(item, 0, wx.EXPAND, 2)
-        return sizer, items
+        print(itemlabels)
+        for i in range(len(itemlabels)//10+1):
+            # for groups of 10 items create a sizer
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            for j in range(10):
+                if 10*i+j == len(itemlabels):
+                    break
+                label = itemlabels[10*i+j]
+                if type=='block':
+                    item = BlockWindow(self.panel, label=label, size=size)
+                elif type=='button':
+                    item = wx.Button(self.panel, label=label)
+                elif type=='radioButton':
+                    item = wx.RadioButton(self.panel, label=label, size=size)
+                elif type=='checkBox':
+                    item = wx.CheckBox(self.panel, -1, label=label)
+                else:
+                    item = BlockWindow(self.panel, label=label, size=size)
+                items[label] = item
+                sizer.Add(item, 0, wx.EXPAND, 2)
+            h_sizer.Add(sizer, 0, wx.EXPAND, 2)
+        return h_sizer, items
 
     def onRadioButton(self, event, source):
         if source == 'All':
@@ -1831,12 +1858,12 @@ class AnalyzeVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image("figures/iconplus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.panel, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image("figures/iconMinus.bmp", wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.panel, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 
@@ -1919,7 +1946,7 @@ class AnalyzeVideos(wx.Frame):
 
     def onEvaluate(self, event):
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
-            videos = self.destfolder.GetPath()
+            videos = [self.targetVideos.GetPath()]
         else: #'target videos list'
             videos = get_videos(self.videosList)
         if self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()) == 'None':
@@ -1931,6 +1958,7 @@ class AnalyzeVideos(wx.Frame):
             destfolder = None
 
         import deeplabcut as d
+        print("Videos to analyze: " , videos)
         d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
                          shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
                          destfolder=destfolder)
