@@ -1752,7 +1752,9 @@ class ExtractOutliers(wx.Frame):
         outlieralg = self.outlierAlg.GetString(self.outlierAlg.GetCurrentSelection())
         extractionAlg = self.extractionAlg.GetString(self.extractionAlg.GetCurrentSelection())
         bodyParts = get_radiobutton_status(self.radioButtons)
-        d.extract_outlier_frames(config=self.config, videos=self.videos, videotype=self.videotype, shuffle=int(self.shuffle.GetValue()),
+        print('Videos: ', self.videos, type(self.videos), type(self.videos[0]))
+
+        d.extract_outlier_frames(config=self.config, videos=self.videos, videotype=self.videotype.GetValue(), shuffle=int(self.shuffle.GetValue()),
                                  outlieralgorithm=outlieralg, comparisonbodyparts=bodyParts, epsilon=float(self.epsilon.GetValue()),
                                  p_bound=float(self.p_bound.GetValue()), ARdegree=int(self.ARdegree.GetValue()),
                                  MAdegree=int(self.MAdegree.GetValue()), alpha=float(self.alpha.GetValue()), extractionalgorithm=extractionAlg,
@@ -2034,10 +2036,10 @@ class AnalyzeVideos(wx.Frame):
         elif frame_type == 'extract outliers':
             count = self.videosList.GetItemCount()
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
-                videos = self.targetVideos.GetPath()
+                videos = [str(self.targetVideos.GetPath())]
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
-            print('Videos: ', videos)
+            print('Videos: ', videos, type(videos), type(videos[0]))
             frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos)
         else:
             return
