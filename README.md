@@ -24,7 +24,7 @@ $ conda env update --file conda-environments/dlc-windowsGPU.yaml
 
 To quickly look if the instalation was succesful run the test script provided
 by the DeepLabCut group with:
-```python
-$ pythonw test.py # in macOs
-$ python test.py # in windows and linux
+```
+pythonw test.py # in macOs
+python test.py # in windows and linux
 ```
