@@ -254,14 +254,19 @@ class ScrollPanel(SP.ScrolledPanel):
         )
         self.slider.Enable(False)
         self.checkBox = wx.CheckBox(self, id=wx.ID_ANY, label="Adjust marker size.")
+        self.checkBoxLasso = wx.CheckBox(self, id=wx.ID_ANY, label="Activate lasso mode.", )
+        self.checkBoxLasso.SetValue(True)
+
         self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
         self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.checkBoxLasso, 0, wx.ALL, 5)
+
         self.choiceBox.Add(self.fieldradiobox, 0, wx.EXPAND | wx.ALL, 10)
         self.choiceBox.Add(self.whiskerradiobox, 0, wx.EXPAND | wx.ALL, 10)
 
         self.SetSizerAndFit(self.choiceBox)
         self.Layout()
-        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox)
+        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.checkBoxLasso)
 
     def clearBoxer(self):
         self.choiceBox.Clear(True)
@@ -365,7 +370,7 @@ class MainFrame(BaseFrame):
         self.widget_panel.Layout()
 
         # Lasso selector:
-        self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select)
+        self.lasso = None
 
         ###############################################################################################################################
         # Variables initialization
@@ -397,9 +402,15 @@ class MainFrame(BaseFrame):
         '''
         # generate vertices:
         N = self.num_whiskers-self.rdb.GetSelection()   # number of labels
+
+        label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
+        posible_label_indices = [x+label_index for x in range(N) if x+label_index not in self.buttonCounter]
+        print('posible label indeices: ', posible_label_indices)
+        N_labels = len(posible_label_indices)
+
         #
         vertices = plot_path(verts).vertices
-        labels_coords = uniform_interpolation(vertices, N)
+        labels_coords = uniform_interpolation(vertices, N_labels)
         print(len(labels_coords))
         for coord in labels_coords:
             self.make_new_label(*coord)
@@ -550,11 +561,14 @@ class MainFrame(BaseFrame):
         x1 = event.xdata
         y1 = event.ydata
 
+        # get label index in the self.bodyparts array
+        label_index = len(self.whiskerparts) * self.wrdb.GetSelection() + self.rdb.GetSelection()
+
         if event.button == 3:
-            if self.rdb.GetSelection() in self.buttonCounter:
+            if label_index in self.buttonCounter:
                 wx.MessageBox(
                     "%s is already annotated. \n Select another body part to annotate."
-                    % (str(self.bodyparts[self.rdb.GetSelection()])),
+                    % (str(self.bodyparts[label_index])),
                     "Error!",
                     wx.OK | wx.ICON_ERROR,
                 )
@@ -564,48 +578,58 @@ class MainFrame(BaseFrame):
         self.canvas.mpl_disconnect(self.onClick)
         self.canvas.mpl_disconnect(self.onButtonRelease)
 
+
     def make_new_label(self, x1, y1):
-        print('whisker selected: ', self.whiskers[self.wrdb.GetSelection()])
-        print('whisker part selected: ', self.whiskerparts[self.rdb.GetSelection()])
+
+        # get label index in the self.bodyparts array
         label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
-        print('label index:  ', label_index)
-        color = self.colormap(
-            self.norm(self.colorIndex[label_index])
-        )
-        circle = [
-            patches.Circle(
-                (x1, y1), radius=self.markerSize, fc=color, alpha=self.alpha
+
+        if label_index in self.buttonCounter:
+            wx.MessageBox(
+                "%s is already annotated. \n Select another body part to annotate."
+                % (str(self.bodyparts[self.rdb.GetSelection()])),
+                "Error!",
+                wx.OK | wx.ICON_ERROR,
             )
-        ]
-        self.num.append(circle)
-        self.axes.add_patch(circle[0])
-        self.dr = auxfun_drag.DraggablePoint(
-            circle[0], self.bodyparts[label_index]
-        )
-        self.dr.connect()
-        self.buttonCounter.append(label_index)
-        self.dr.coords = [
-            [
-                x1,
-                y1,
-                self.bodyparts[label_index],
-                label_index,
-            ]
-        ]
-        self.drs.append(self.dr)
-        self.updatedCoords.append(self.dr.coords)
-
-        if self.rdb.GetSelection() < len(self.whiskerparts) - 1:
-            print('new rdb selection: ', self.rdb.GetSelection() + 1)
-            self.rdb.SetSelection(self.rdb.GetSelection() + 1)
         else:
-            print('new rdb selection: ', 0, 'and new wrdb selection : ', self.wrdb.GetSelection() + 1)
 
-            self.rdb.SetSelection(0)
-            if self.wrdb.GetSelection() < self.num_whiskers:
-                self.wrdb.SetSelection(self.wrdb.GetSelection() + 1)
+            # Create a colored circle as instance of DraggablePoint and append to the list of coords
+            color = self.colormap(
+                self.norm(self.colorIndex[label_index])
+            )
+            circle = [
+                patches.Circle(
+                    (x1, y1), radius=self.markerSize, fc=color, alpha=self.alpha
+                )
+            ]
+            self.num.append(circle)
+            self.axes.add_patch(circle[0])
+            self.dr = auxfun_drag.DraggablePoint(
+                circle[0], self.bodyparts[label_index]
+            )
+            self.dr.connect()
 
-        self.figure.canvas.draw()
+            # include also tot he buttonCounter that works as buffer to know labels where assignated so far.
+            self.buttonCounter.append(label_index)
+            self.dr.coords = [
+                [
+                    x1,
+                    y1,
+                    self.bodyparts[label_index],
+                    label_index,
+                ]
+            ]
+            self.drs.append(self.dr)
+            self.updatedCoords.append(self.dr.coords)
+            # update status of the radial button boxes and draw circle into the canvas
+            if self.rdb.GetSelection() < len(self.whiskerparts) - 1:
+                self.rdb.SetSelection(self.rdb.GetSelection() + 1)
+            else:
+                self.rdb.SetSelection(0)
+                if self.wrdb.GetSelection() < self.num_whiskers:
+                    self.wrdb.SetSelection(self.wrdb.GetSelection() + 1)
+
+            self.figure.canvas.draw()
 
     def nextLabel(self, event):
         """
@@ -771,6 +795,7 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
+                self.checkBoxMultiLabel,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
@@ -779,6 +804,7 @@ class MainFrame(BaseFrame):
             self.whiskerparts = self.choice_panel.whiskerparts
 
             self.buttonCounter = MainFrame.plot(self, self.img)
+            print(' line 806 mlp_connect!! +> ')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         else:
@@ -821,19 +847,23 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
+                self.checkBoxMultiLabel,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
             self.num_whiskers = self.choice_panel.num_whiskers
             self.whiskers = list(self.choice_panel.whiskers.keys())
             self.whiskerparts = self.choice_panel.whiskerparts
-
+            print('====> mlp_connect line 856')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
             self.buttonCounter = MainFrame.plot(self, self.img)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
         self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+
+        # # make lasso selector active:
+        # self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select)
 
     def nextImage(self, event):
         """
@@ -884,6 +914,7 @@ class MainFrame(BaseFrame):
             self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
             self.buttonCounter = MainFrame.plot(self, self.img)
+            print('========>>> line 916 mlp_connect')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
 
@@ -926,6 +957,7 @@ class MainFrame(BaseFrame):
         self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
         self.buttonCounter = MainFrame.plot(self, self.img)
+        print('=============>DASJDLAKSJL line 958 mlp_connect!! ')
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
         self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         MainFrame.saveEachImage(self)
@@ -1020,6 +1052,7 @@ class MainFrame(BaseFrame):
         self.cb = event.GetEventObject()
         if self.cb.GetValue():
             self.slider.Enable(True)
+            print(' +++++>>   line 1052 mlp_connect....')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         else:
