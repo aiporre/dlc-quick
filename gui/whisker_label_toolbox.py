@@ -254,19 +254,19 @@ class ScrollPanel(SP.ScrolledPanel):
         )
         self.slider.Enable(False)
         self.checkBox = wx.CheckBox(self, id=wx.ID_ANY, label="Adjust marker size.")
-        self.checkBoxLasso = wx.CheckBox(self, id=wx.ID_ANY, label="Activate lasso mode.", )
-        self.checkBoxLasso.SetValue(True)
+        self.checkBoxLassoMode = wx.CheckBox(self, id=wx.ID_ANY, label="Activate lasso mode.", )
+        self.checkBoxLassoMode.SetValue(True)
 
         self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
         self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
-        self.choiceBox.Add(self.checkBoxLasso, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.checkBoxLassoMode, 0, wx.ALL, 5)
 
         self.choiceBox.Add(self.fieldradiobox, 0, wx.EXPAND | wx.ALL, 10)
         self.choiceBox.Add(self.whiskerradiobox, 0, wx.EXPAND | wx.ALL, 10)
 
         self.SetSizerAndFit(self.choiceBox)
         self.Layout()
-        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.checkBoxLasso)
+        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.checkBoxLassoMode)
 
     def clearBoxer(self):
         self.choiceBox.Clear(True)
@@ -400,20 +400,23 @@ class MainFrame(BaseFrame):
         :param verts:
         :return:
         '''
-        # generate vertices:
-        N = self.num_whiskers-self.rdb.GetSelection()   # number of labels
+        # single clicks are filtered
+        if len(verts)>2:
+            # Calculate how many whisker parts are possible to label
+            N = self.num_whiskers-self.rdb.GetSelection()   # number of labels
 
-        label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
-        posible_label_indices = [x+label_index for x in range(N) if x+label_index not in self.buttonCounter]
-        print('posible label indeices: ', posible_label_indices)
-        N_labels = len(posible_label_indices)
+            # calculate which labels are going to be generated, as we just want to label the given whisker
+            # only missing labels are generated for that whisker
+            label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
+            posible_label_indices = [x+label_index for x in range(N) if x+label_index not in self.buttonCounter]
+            N_labels = len(posible_label_indices)
 
-        #
-        vertices = plot_path(verts).vertices
-        labels_coords = uniform_interpolation(vertices, N_labels)
-        print(len(labels_coords))
-        for coord in labels_coords:
-            self.make_new_label(*coord)
+            # N_labels new whisker parts are generated
+            vertices = plot_path(verts).interpolated(10).vertices # interpolation is required to obtain enough points
+            labels_coords = uniform_interpolation(vertices, N_labels)
+            print(len(labels_coords))
+            for coord in labels_coords:
+                self.make_new_label(*coord)
 
 
     ###############################################################################################################################
@@ -460,7 +463,7 @@ class MainFrame(BaseFrame):
                 self.canvas,
                 self.toolbar,
             ) = self.image_panel.drawplot(
-                self.img,
+                self.img_index,
                 img_name,
                 self.iter,
                 self.index,
@@ -468,7 +471,7 @@ class MainFrame(BaseFrame):
                 self.colormap,
                 keep_view=self.view_locked,
             )
-            self.buttonCounter = MainFrame.plot(self, self.img)
+            self.buttonCounter = MainFrame.plot(self, self.img_index)
 
     def activateSlider(self, event):
         """
@@ -482,6 +485,16 @@ class MainFrame(BaseFrame):
         else:
             self.slider.Enable(False)
 
+    def activateLasso(self, event):
+        """
+        Activate
+        """
+        if self.checkBoxLassoMode.GetValue():
+            self.lasso.set_active(True)
+        else:
+            self.lasso.set_active(False)
+
+
     def OnSliderScroll(self, event):
         """
         Adjust marker size for plotting the annotations
@@ -493,7 +506,7 @@ class MainFrame(BaseFrame):
         img_name = Path(self.index[self.iter]).name
         self.figure.delaxes(self.figure.axes[1])
         self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(
-            self.img,
+            self.img_index,
             img_name,
             self.iter,
             self.index,
@@ -504,7 +517,7 @@ class MainFrame(BaseFrame):
 
         self.axes.callbacks.connect("xlim_changed", self.onZoom)
         self.axes.callbacks.connect("ylim_changed", self.onZoom)
-        self.buttonCounter = MainFrame.plot(self, self.img)
+        self.buttonCounter = MainFrame.plot(self, self.img_index)
 
     def quitButton(self, event):
         """
@@ -564,7 +577,7 @@ class MainFrame(BaseFrame):
         # get label index in the self.bodyparts array
         label_index = len(self.whiskerparts) * self.wrdb.GetSelection() + self.rdb.GetSelection()
 
-        if event.button == 3:
+        if event.button == 3 and not self.checkBoxLassoMode.GetValue():
             if label_index in self.buttonCounter:
                 wx.MessageBox(
                     "%s is already annotated. \n Select another body part to annotate."
@@ -712,6 +725,7 @@ class MainFrame(BaseFrame):
                 os.path.join(self.dir, "CollectedData_" + self.scorer + ".h5")
             )
             self.dataFrame.sort_index(inplace=True)
+            # enables prev button
             self.prev.Enable(True)
 
             # Finds the first empty row in the dataframe and sets the iteration to that index
@@ -736,10 +750,10 @@ class MainFrame(BaseFrame):
             self.iter = 0
 
         # Reading the image name
-        self.img = self.dataFrame.index[self.iter]
-        img_name = Path(self.img).name
+        self.img_index = self.dataFrame.index[self.iter]
+        img_name = Path(self.img_index).name
         self.norm, self.colorIndex = self.image_panel.getColorIndices(
-            self.img, self.bodyparts
+            self.img_index, self.bodyparts
         )
 
         # Checking for new frames and adding them to the existing dataframe
@@ -784,7 +798,7 @@ class MainFrame(BaseFrame):
                 self.canvas,
                 self.toolbar,
             ) = self.image_panel.drawplot(
-                self.img, img_name, self.iter, self.index, self.bodyparts, self.colormap
+                self.img_index, img_name, self.iter, self.index, self.bodyparts, self.colormap
             )
             self.axes.callbacks.connect("xlim_changed", self.onZoom)
             self.axes.callbacks.connect("ylim_changed", self.onZoom)
@@ -795,7 +809,7 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
-                self.checkBoxMultiLabel,
+                self.checkBoxLassoMode,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
@@ -803,8 +817,7 @@ class MainFrame(BaseFrame):
             self.whiskers = list(self.choice_panel.whiskers.keys())
             self.whiskerparts = self.choice_panel.whiskerparts
 
-            self.buttonCounter = MainFrame.plot(self, self.img)
-            print(' line 806 mlp_connect!! +> ')
+            self.buttonCounter = MainFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         else:
@@ -818,7 +831,7 @@ class MainFrame(BaseFrame):
             if result == wx.ID_NO:
                 self.bodyparts = self.new_bodyparts
                 self.norm, self.colorIndex = self.image_panel.getColorIndices(
-                    self.img, self.bodyparts
+                    self.img_index, self.bodyparts
                 )
             a = np.empty((len(self.index), 2))
             a[:] = np.nan
@@ -836,7 +849,7 @@ class MainFrame(BaseFrame):
                 self.canvas,
                 self.toolbar,
             ) = self.image_panel.drawplot(
-                self.img, img_name, self.iter, self.index, self.bodyparts, self.colormap
+                self.img_index, img_name, self.iter, self.index, self.bodyparts, self.colormap
             )
             self.axes.callbacks.connect("xlim_changed", self.onZoom)
             self.axes.callbacks.connect("ylim_changed", self.onZoom)
@@ -847,23 +860,25 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
-                self.checkBoxMultiLabel,
+                self.checkBoxLassoMode,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
             self.num_whiskers = self.choice_panel.num_whiskers
             self.whiskers = list(self.choice_panel.whiskers.keys())
             self.whiskerparts = self.choice_panel.whiskerparts
-            print('====> mlp_connect line 856')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
-            self.buttonCounter = MainFrame.plot(self, self.img)
+            self.buttonCounter = MainFrame.plot(self, self.img_index)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+        self.checkBoxLassoMode.Bind(wx.EVT_CHECKBOX, self.activateLasso)
         self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
 
         # # make lasso selector active:
-        # self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select)
+        if self.checkBoxLassoMode.GetValue():
+            self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select,button=1)
+
 
     def nextImage(self, event):
         """
@@ -891,7 +906,7 @@ class MainFrame(BaseFrame):
 
         if len(self.index) >= self.iter:
             self.updatedCoords = MainFrame.getLabels(self, self.iter)
-            self.img = self.index[self.iter]
+            self.img_index = self.index[self.iter]
             img_name = Path(self.index[self.iter]).name
             self.figure.delaxes(
                 self.figure.axes[1]
@@ -902,7 +917,7 @@ class MainFrame(BaseFrame):
                 self.canvas,
                 self.toolbar,
             ) = self.image_panel.drawplot(
-                self.img,
+                self.img_index,
                 img_name,
                 self.iter,
                 self.index,
@@ -913,8 +928,7 @@ class MainFrame(BaseFrame):
             self.axes.callbacks.connect("xlim_changed", self.onZoom)
             self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
-            self.buttonCounter = MainFrame.plot(self, self.img)
-            print('========>>> line 916 mlp_connect')
+            self.buttonCounter = MainFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
 
@@ -939,13 +953,13 @@ class MainFrame(BaseFrame):
         self.iter = self.iter - 1
 
         self.rdb.SetSelection(0)
-        self.img = self.index[self.iter]
+        self.img_index = self.index[self.iter]
         img_name = Path(self.index[self.iter]).name
         self.figure.delaxes(
             self.figure.axes[1]
         )  # Removes the axes corresponding to the colorbar
         self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(
-            self.img,
+            self.img_index,
             img_name,
             self.iter,
             self.index,
@@ -956,8 +970,7 @@ class MainFrame(BaseFrame):
         self.axes.callbacks.connect("xlim_changed", self.onZoom)
         self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
-        self.buttonCounter = MainFrame.plot(self, self.img)
-        print('=============>DASJDLAKSJL line 958 mlp_connect!! ')
+        self.buttonCounter = MainFrame.plot(self, self.img_index)
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
         self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         MainFrame.saveEachImage(self)
@@ -1052,7 +1065,6 @@ class MainFrame(BaseFrame):
         self.cb = event.GetEventObject()
         if self.cb.GetValue():
             self.slider.Enable(True)
-            print(' +++++>>   line 1052 mlp_connect....')
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         else:
