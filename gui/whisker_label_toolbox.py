@@ -20,7 +20,9 @@ from matplotlib.backends.backend_wxagg import (
 from matplotlib.widgets import LassoSelector
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from gui.widgets import BasePanel, WidgetPanel, BaseFrame
+# from gui.widgets import BasePanel, WidgetPanel, BaseFrame
+from deeplabcut.gui.widgets import WidgetPanel, BasePanel, BaseFrame
+
 from gui import auxfun_drag
 
 from deeplabcut.utils import auxiliaryfunctions, auxiliaryfunctions_3d
@@ -418,7 +420,6 @@ class MainFrame(BaseFrame):
             for coord in labels_coords:
                 self.make_new_label(*coord)
 
-
     ###############################################################################################################################
     # BUTTONS FUNCTIONS FOR HOTKEYS
     def OnKeyPressed(self, event=None):
@@ -493,7 +494,6 @@ class MainFrame(BaseFrame):
             self.lasso.set_active(True)
         else:
             self.lasso.set_active(False)
-
 
     def OnSliderScroll(self, event):
         """
@@ -590,7 +590,6 @@ class MainFrame(BaseFrame):
 
         self.canvas.mpl_disconnect(self.onClick)
         self.canvas.mpl_disconnect(self.onButtonRelease)
-
 
     def make_new_label(self, x1, y1):
 
@@ -877,8 +876,7 @@ class MainFrame(BaseFrame):
 
         # # make lasso selector active:
         if self.checkBoxLassoMode.GetValue():
-            self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select,button=1)
-
+            self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select,button=3)
 
     def nextImage(self, event):
         """
