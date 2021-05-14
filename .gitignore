@@ -1,1 +1,9 @@
-.idea
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.DS_Store
+__pycache__/
+.idea/
+.gui/__pycache__/
