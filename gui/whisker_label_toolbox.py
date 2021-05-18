@@ -12,6 +12,7 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tables
 import wx
 import wx.lib.scrolledpanel as SP
 from matplotlib.backends.backend_wxagg import (
@@ -29,6 +30,31 @@ from deeplabcut.utils import auxiliaryfunctions, auxiliaryfunctions_3d
 from gui.utils import parse_yaml
 from gui.utils.interpolation import uniform_interpolation
 
+class WhiskerDetection:
+    def __init__(self, label_dir):
+        self.video_name = os.path.basename(label_dir).replace('.','')
+        print('VIDEO NAME: ', self.video_name)
+        self.label_dir = label_dir
+        self.project_dir =  os.path.dirname(os.path.dirname(label_dir))
+        print('PROJECT DIR: ', self.project_dir)
+        self.whisker_detection_file = os.path.join(self.project_dir, 'whisker-detection', 'whiski_'+ self.video_name, self.video_name+'.hdf5')
+        print('WHISKER DETECTION FILE: ', self.whisker_detection_file)
+        assert os.path.exists(self.whisker_detection_file), 'whisker detection not found for ' + self.label_dir
+        with tables.open_file(self.whisker_detection_file) as fi:
+            test_result = pd.DataFrame.from_records(fi.root.summary.read())
+            test_result['x'] = fi.root.pixels_x.read()
+            test_result['y'] = fi.root.pixels_y.read()
+        self.results = test_result
+        print('self.results.columns = ', self.results.columns)
+
+    def get_whisker(self, time):
+        print('get whisker TIME input : ', time)
+        frame_results = self.results[self.results.time == time]
+        coords = []
+        for i in range(len(frame_results)):
+            coords.append((frame_results.tip_x.iloc[i], frame_results.tip_y.iloc[i], frame_results.fol_x.iloc[i],
+                           frame_results.fol_y.iloc[i], frame_results.x.iloc[i], frame_results.y.iloc[i]))
+        return coords
 
 class ImagePanel(BasePanel):
     def __init__(self, parent, config, config3d, sourceCam, gui_size, **kwargs):
@@ -256,19 +282,29 @@ class ScrollPanel(SP.ScrolledPanel):
         )
         self.slider.Enable(False)
         self.checkBox = wx.CheckBox(self, id=wx.ID_ANY, label="Adjust marker size.")
-        self.checkBoxLassoMode = wx.CheckBox(self, id=wx.ID_ANY, label="Activate lasso mode.", )
-        self.checkBoxLassoMode.SetValue(True)
+        self.labelingModeLbl = wx.StaticText(self, -1, "Select labeling mode:")
+        self.labelingMode = wx.Choice(self, id=wx.ID_ANY, choices=["Single","Draw","Whisker Tracking"])
+        self.labelingMode.SetSelection(0)
+
+        self.labelingDirectionLbl = wx.StaticText(self, -1, "Select labeling direction:")
+        self.labelingDirection = wx.Choice(self, id=wx.ID_ANY, choices=["to base", "to tip"])
+        self.labelingDirection.SetSelection(1)
 
         self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
         self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
-        self.choiceBox.Add(self.checkBoxLassoMode, 0, wx.ALL, 5)
+
+        self.choiceBox.Add(self.labelingModeLbl, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.labelingMode, 0, wx.ALL, 5)
+
+        self.choiceBox.Add(self.labelingDirectionLbl, 0, wx.ALL, 5)
+        self.choiceBox.Add(self.labelingDirection, 0, wx.ALL, 5)
 
         self.choiceBox.Add(self.fieldradiobox, 0, wx.EXPAND | wx.ALL, 10)
         self.choiceBox.Add(self.whiskerradiobox, 0, wx.EXPAND | wx.ALL, 10)
 
         self.SetSizerAndFit(self.choiceBox)
         self.Layout()
-        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.checkBoxLassoMode)
+        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.labelingMode, self.labelingDirection)
 
     def clearBoxer(self):
         self.choiceBox.Clear(True)
@@ -405,19 +441,28 @@ class MainFrame(BaseFrame):
         # single clicks are filtered
         if len(verts)>2:
             # Calculate how many whisker parts are possible to label
-            N = self.num_whiskers-self.rdb.GetSelection()   # number of labels
+            N = self.num_whiskers-self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
 
             # calculate which labels are going to be generated, as we just want to label the given whisker
             # only missing labels are generated for that whisker
             label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
-            posible_label_indices = [x+label_index for x in range(N) if x+label_index not in self.buttonCounter]
-            N_labels = len(posible_label_indices)
+            print('###> label indes = ', label_index)
+            print('===> BUTTON COUNTER: ', self.buttonCounter)
+            if self.labelingDirection.GetSelection() == 1:
+                whisker_part_indices = [x+self.rdb.GetSelection() for x in range(N) if x+label_index not in self.buttonCounter]
+            else:
+                whisker_part_indices = [self.rdb.GetSelection()-x for x in range(N,-1,-1) if label_index-x not in self.buttonCounter]
+
+
+            print('whisker part indices: ', whisker_part_indices)
+            N_labels = len(whisker_part_indices)
 
             # N_labels new whisker parts are generated
             vertices = plot_path(verts).interpolated(10).vertices # interpolation is required to obtain enough points
             labels_coords = uniform_interpolation(vertices, N_labels)
             print(len(labels_coords))
-            for coord in labels_coords:
+            for coord, whisker_part in zip(labels_coords, whisker_part_indices):
+                self.rdb.SetSelection(whisker_part)
                 self.make_new_label(*coord)
 
     ###############################################################################################################################
@@ -490,10 +535,12 @@ class MainFrame(BaseFrame):
         """
         Activate
         """
-        if self.checkBoxLassoMode.GetValue():
+        if self.labelingMode.GetSelection() == 1:
             self.lasso.set_active(True)
         else:
             self.lasso.set_active(False)
+
+        self.add_whisker_detect_layer()
 
     def OnSliderScroll(self, event):
         """
@@ -577,7 +624,7 @@ class MainFrame(BaseFrame):
         # get label index in the self.bodyparts array
         label_index = len(self.whiskerparts) * self.wrdb.GetSelection() + self.rdb.GetSelection()
 
-        if event.button == 3 and not self.checkBoxLassoMode.GetValue():
+        if event.button == 3 and self.labelingMode.GetSelection() == 0:
             if label_index in self.buttonCounter:
                 wx.MessageBox(
                     "%s is already annotated. \n Select another body part to annotate."
@@ -590,6 +637,18 @@ class MainFrame(BaseFrame):
 
         self.canvas.mpl_disconnect(self.onClick)
         self.canvas.mpl_disconnect(self.onButtonRelease)
+
+    def add_whisker_detect_layer(self):
+        print('--------- adding whisker layer')
+        if self.whisker_detection is None or not self.labelingMode.GetSelection() == 2:
+            print('No whisker detection for this labeling')
+            return
+        print('=====>> frame time extracted: ', os.path.basename(self.img_index).split('.')[0][3:])
+        frame_time = int(os.path.basename(self.img_index).split('.')[0][3:])
+        ws_coords = self.whisker_detection.get_whisker(frame_time)
+        for c in ws_coords:
+            self.axes.plot(c[4], c[5], 'r')
+        self.figure.canvas.draw()
 
     def make_new_label(self, x1, y1):
 
@@ -808,7 +867,8 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
-                self.checkBoxLassoMode,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
@@ -859,7 +919,8 @@ class MainFrame(BaseFrame):
                 self.wrdb,
                 self.slider,
                 self.checkBox,
-                self.checkBoxLassoMode,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
@@ -871,12 +932,26 @@ class MainFrame(BaseFrame):
             self.buttonCounter = MainFrame.plot(self, self.img_index)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
-        self.checkBoxLassoMode.Bind(wx.EVT_CHECKBOX, self.activateLasso)
+        self.labelingMode.Bind(wx.EVT_CHOICE, self.activateLasso)
         self.slider.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
 
         # # make lasso selector active:
-        if self.checkBoxLassoMode.GetValue():
-            self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select,button=3)
+        if self.labelingMode.GetSelection() == wx.NOT_FOUND:
+            self.labelingMode.setSelection(0)
+        self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select, button=3)
+        if self.labelingMode.GetSelection() != 1:
+            self.lasso.set_active(False)
+
+        # load whisker tracking
+        try:
+            self.whisker_detection = WhiskerDetection(self.dir)
+        except Exception as e:
+            print('Cannot load whisker detection for this labeling', self.dir)
+            print('Execption: ', e)
+            self.whisker_detection = None
+        # add whisker layer:
+        self.add_whisker_detect_layer()
+
 
     def nextImage(self, event):
         """
@@ -929,6 +1004,7 @@ class MainFrame(BaseFrame):
             self.buttonCounter = MainFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
+            self.add_whisker_detect_layer()
 
     def prevImage(self, event):
         """
@@ -972,6 +1048,7 @@ class MainFrame(BaseFrame):
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
         self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         MainFrame.saveEachImage(self)
+        self.add_whisker_detect_layer()
 
     def getLabels(self, img_index):
         """
