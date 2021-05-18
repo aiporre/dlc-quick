@@ -115,7 +115,9 @@ class DetectWhiskers(BaseFrame):
             output_file = os.path.expanduser(output_file)
             print('input_video ', input_video)
             print('output_file', output_file)
-            WhiskiWrap.pipeline_trace(input_video, output_file, n_trace_processes=1, chunk_sz_frames=100)
+            input_reader = WhiskiWrap.FFmpegReader(input_video)
+            WhiskiWrap.interleaved_reading_and_tracing(input_reader, output_path, h5_filename=output_file, chunk_size=100)
+            # WhiskiWrap.pipeline_trace(input_video, output_file, n_trace_processes=1, chunk_sz_frames=100)
 
         print('Extraction...')
         self.Close()
