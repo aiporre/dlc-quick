@@ -8,6 +8,8 @@ import sys
 import matplotlib
 import glob
 
+from gui.whisker_detection import DetectWhiskers
+
 matplotlib.use('Agg')
 print('importing deeplab cut..')
 import deeplabcut as d
@@ -2097,13 +2099,19 @@ class MainFrame(wx.Frame):
         # create main control elements
         # annotation
         box1, items = self.MakeStaticBoxSizer("Annotation",
-                                              ['create new project', 'add new videos', 'extract frames', 'label frames',
+                                              ['create new project',
+                                               'add new videos',
+                                               'extract frames',
+                                               'detect whiskers',
+                                               'label frames',
                                                'check annotations'],
                                               size=(200, 25),
                                               type='button')
         items['create new project'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'create new project'))
         items['add new videos'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'add new videos'))
         items['extract frames'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'extract frames'))
+        items['detect whiskers'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'detect whiskers'))
+
         items['label frames'].Bind(wx.EVT_BUTTON, self.on_label_frames)
         items['check annotations'].Bind(wx.EVT_BUTTON, self.on_check_annotations)
 
@@ -2171,7 +2179,7 @@ class MainFrame(wx.Frame):
         return sizer, items
 
     def on_label_frames(self, event):
-        print('create labels...')
+        print('opening dlc labeling tool box...')
         import deeplabcut as d
         config_path = self.configPath.GetPath()
         d.label_frames(config_path)
@@ -2194,6 +2202,8 @@ class MainFrame(wx.Frame):
             frame = AddNewVideos(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'extract frames':
             frame = ExtractFrames(self.GetParent(), config=self.configPath.GetPath())
+        elif frame_type == 'detect whiskers':
+            frame = DetectWhiskers(self.GetParent(), dlc_config=self.configPath.GetPath())
         elif frame_type == 'create training set':
             frame = CreateTraining(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'train network':
