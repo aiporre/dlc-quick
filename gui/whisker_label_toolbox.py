@@ -638,6 +638,9 @@ class MainFrame(BaseFrame):
                 )
             else:
                 self.make_new_label(x1,y1)
+        elif event.button == 3 and self.labelingMode.GetSelection() == 2:
+            print(' right click and selection whisker labeling mode')
+            # find closest whisker curve to click position
 
         self.canvas.mpl_disconnect(self.onClick)
         self.canvas.mpl_disconnect(self.onButtonRelease)

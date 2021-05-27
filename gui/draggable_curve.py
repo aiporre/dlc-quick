@@ -80,14 +80,14 @@ class DraggableCurve:
         self._disconnect()
         self._figure.canvas.draw()
 
-    def _is_close_to_segment(self, event):
+    def calculate_close_distance_to_curve(self, x, y):
         '''
-        Checks if event click happened near to a segment
+        Calculates the closest distance to the curve if it fits into the radius of selection
 
-        :param event:
+        :param x:
+        :param y:
         :return:
         '''
-        x, y = event.xdata, event.ydata
         min_dist = math.inf
         # first finds nearest segment in the polyline
         s1, s2 = None, None
@@ -110,17 +110,32 @@ class DraggableCurve:
             # computes line
             A = (s2[1] - s1[1])
             B = -(s2[0] - s1[0])
-            C = s1[1]* (s2[0] - s1[0]) - s1[0] * A
+            C = s1[1] * (s2[0] - s1[0]) - s1[0] * A
             # evaluates distance = |Axo+Byo+C|/sqrt(A^2+B^2)
-            projected_dist = math.fabs(A * x + B * y + C) / math.sqrt(A ** 2 + B ** 2) if A !=0 and B !=0 else math.inf
+            projected_dist = math.fabs(A * x + B * y + C) / math.sqrt(
+                A ** 2 + B ** 2) if A != 0 and B != 0 else math.inf
             if projected_dist < self.selection_radius:
                 # checks if distance is less that the selection radius
-                is_close = True
+                dist_to_curve = projected_dist
             else:
-                is_close = False
+                dist_to_curve = None
         else:
-            is_close = False
+            dist_to_curve = None
 
+        return dist_to_curve
+
+    def _is_close_to_segment(self, event):
+        '''
+        Checks if event click happened near to a segment
+
+        :param event:
+        :return:
+        '''
+        x, y = event.xdata, event.ydata
+        if self.calculate_close_distance_to_curve(x, y) is None:
+            is_close = False
+        else:
+            is_close = True
         return is_close
 
     def _on_release(self, event):
