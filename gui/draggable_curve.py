@@ -10,7 +10,7 @@ class DraggableCurve:
 
     click_down = None # flag that signs click has been issued
 
-    def __init__(self, point_set, figure=None, axes=None, selection_radius=0.02):
+    def __init__(self, point_set, figure=None, axes=None, selection_radius=0.02, color='#F97306'):
         '''
 
         :param point_set: Point
@@ -29,7 +29,7 @@ class DraggableCurve:
         self.point_set = point_set
         self.new_point_set = point_set
 
-        self.curve_patch = Polygon(self.point_set, closed=False, fill=False, linewidth=3, color='#F97306')
+        self.curve_patch = Polygon(self.point_set, closed=False, fill=False, linewidth=3, color=color, alpha=0.4)
 
         self._axes.add_patch(self.curve_patch)
 
@@ -60,7 +60,7 @@ class DraggableCurve:
 
         if DraggableCurve.click_down is None and event.inaxes == self._axes:
             is_contained = self._is_close_to_segment(event)
-            print('Clicked on curve? ', is_contained)
+            # print('Clicked on curve? ', is_contained)
             if not is_contained:
                 return
             # if left click then the curve is moved
@@ -70,9 +70,14 @@ class DraggableCurve:
                     DraggableCurve.click_down = self
             elif event.button == 2:
                 # if central button then the whisker is deleted.
-                self._delete_data()
+                self.delete_from_canvas()
 
-    def _delete_data(self):
+    def delete_from_canvas(self):
+        '''
+        Removes the draggable curve and disconnects event handlers for this object
+
+        :return:
+        '''
         DraggableCurve.lock = None
         self.curve_patch.set_visible(False)
         self.click = None
@@ -97,8 +102,8 @@ class DraggableCurve:
             if dist < min_dist:
                 min_dist = dist
                 s1, s2 = p1, p2
-        print(' segment 1 and 2: s1 = ', s1, '  s2 = ', s2)
-        # checks if the points projects on segment. Shadow of point lies in the segment?
+        # print(' segment 1 and 2: s1 = ', s1, '  s2 = ', s2)
+        # checks if the points projedcts on segment. Shadow of point lies in the segment?
         R = math.hypot(s1[0] - s2[0], s1[1] - s2[1])
         d1 = math.hypot(s1[0] - x, s1[1] - y)
         d2 = math.hypot(s2[0] - x, s2[1] - y)

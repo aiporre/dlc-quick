@@ -47,6 +47,7 @@ class WhiskerDetection:
             test_result['y'] = fi.root.pixels_y.read()
         self.results = test_result
         print('self.results.columns = ', self.results.columns)
+        self.num_detections = len(self.results.id.unique())
 
     def get_whisker(self, time):
         print('get whisker TIME input : ', time)
@@ -641,20 +642,34 @@ class MainFrame(BaseFrame):
         elif event.button == 3 and self.labelingMode.GetSelection() == 2:
             print(' right click and selection whisker labeling mode')
             # find closest whisker curve to click position
+            closest_whisker = None
+            min_dist = np.inf
+            for draggable_whisker in self.draggable_whiskers:
+                if draggable_whisker.active:
+                    dist = draggable_whisker.calculate_close_distance_to_curve(x1,y1)
+                    if dist is not None and dist < min_dist:
+                        closest_whisker = draggable_whisker
+                        min_dist = dist
+            if closest_whisker is not None:
+                self.on_select(closest_whisker.point_set)
+                closest_whisker.delete_from_canvas()
+
 
         self.canvas.mpl_disconnect(self.onClick)
         self.canvas.mpl_disconnect(self.onButtonRelease)
 
     def add_whisker_detect_layer(self):
         print('--------- adding whisker layer')
+        self.draggable_whiskers = []
         if self.whisker_detection is None or not self.labelingMode.GetSelection() == 2:
             print('No whisker detection for this labeling')
             return
         print('=====>> frame time extracted: ', os.path.basename(self.img_index).split('.')[0][3:])
         frame_time = int(os.path.basename(self.img_index).split('.')[0][3:])
         ws_coords = self.whisker_detection.get_whisker(frame_time)
-        for c in ws_coords:
-            self.draggable_whiskers.append(DraggableCurve(list(zip(c[4], c[5])), selection_radius=3, figure=self.figure, axes=self.axes))
+        for i, c in enumerate(ws_coords):
+            color = self.colormap(self.norm_whiskers(self.color_index_whiskers[i]))
+            self.draggable_whiskers.append(DraggableCurve(list(zip(c[4], c[5])), selection_radius=3, figure=self.figure, axes=self.axes, color=color))
         self.figure.canvas.draw()
 
     def make_new_label(self, x1, y1):
@@ -952,6 +967,8 @@ class MainFrame(BaseFrame):
         # load whisker tracking
         try:
             self.whisker_detection = WhiskerDetection(self.dir)
+            self.norm_whiskers, self.color_index_whiskers = self.image_panel.getColorIndices(self.img_index, range(
+                self.whisker_detection.num_detections))
         except Exception as e:
             print('Cannot load whisker detection for this labeling', self.dir)
             print('Execption: ', e)
