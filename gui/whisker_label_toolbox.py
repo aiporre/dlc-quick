@@ -312,9 +312,9 @@ class ScrollPanel(SP.ScrolledPanel):
         self.choiceBox.Clear(True)
 
 
-class MainFrame(BaseFrame):
+class LabelWhiskersFrame(BaseFrame):
     def __init__(self, parent, config, imtypes, config3d, sourceCam):
-        super(MainFrame, self).__init__(
+        super(LabelWhiskersFrame, self).__init__(
             "DeepLabCut2.0 - Labeling ToolBox", parent, imtypes
         )
 
@@ -522,7 +522,7 @@ class MainFrame(BaseFrame):
                 self.colormap,
                 keep_view=self.view_locked,
             )
-            self.buttonCounter = MainFrame.plot(self, self.img_index)
+            self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
 
     def activateSlider(self, event):
         """
@@ -532,7 +532,7 @@ class MainFrame(BaseFrame):
         if self.checkSlider.GetValue():
             self.activate_slider = True
             self.slider.Enable(True)
-            MainFrame.updateZoomPan(self)
+            LabelWhiskersFrame.updateZoomPan(self)
         else:
             self.slider.Enable(False)
 
@@ -551,8 +551,8 @@ class MainFrame(BaseFrame):
         """
         Adjust marker size for plotting the annotations
         """
-        MainFrame.saveEachImage(self)
-        MainFrame.updateZoomPan(self)
+        LabelWhiskersFrame.saveEachImage(self)
+        LabelWhiskersFrame.updateZoomPan(self)
         self.buttonCounter = []
         self.markerSize = self.slider.GetValue()
         img_name = Path(self.index[self.iter]).name
@@ -569,7 +569,7 @@ class MainFrame(BaseFrame):
 
         self.axes.callbacks.connect("xlim_changed", self.onZoom)
         self.axes.callbacks.connect("ylim_changed", self.onZoom)
-        self.buttonCounter = MainFrame.plot(self, self.img_index)
+        self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
 
     def quitButton(self, event):
         """
@@ -592,8 +592,8 @@ class MainFrame(BaseFrame):
             self.axes.clear()
             self.figure.delaxes(self.figure.axes[1])
             self.choiceBox.Clear(True)
-            MainFrame.updateZoomPan(self)
-            MainFrame.browseDir(self, event)
+            LabelWhiskersFrame.updateZoomPan(self)
+            LabelWhiskersFrame.browseDir(self, event)
             self.save.Enable(True)
         else:
             self.Destroy()
@@ -605,7 +605,7 @@ class MainFrame(BaseFrame):
         """
         Opens Instructions
         """
-        MainFrame.updateZoomPan(self)
+        LabelWhiskersFrame.updateZoomPan(self)
         # TODO: update message
         wx.MessageBox(
             "1. Select an individual and one of the body parts from the radio buttons to add a label (if necessary change config.yaml first to edit the label names). \n\n2. Right clicking on the image will add the selected label and the next available label will be selected from the radio button. \n The label will be marked as circle filled with a unique color (and individual ID a unique color on the rim).\n\n3. To change the marker size, mark the checkbox and move the slider, then uncheck the box. \n\n4. Hover your mouse over this newly added label to see its name. \n\n5. Use left click and drag to move the label position.  \n\n6. Once you are happy with the position, right click to add the next available label. You can always reposition the old labels, if required. You can delete a label with the middle button mouse click (or click 'delete' key). \n\n7. Click Next/Previous to move to the next/previous image (or hot-key arrows left and right).\n User can also re-label a deletd point by going to a previous/next image then returning to the current iamge. \n NOTE: the user cannot add a label if the label is already present. \n \n8. You can click Cntrl+C to copy+paste labels from a previous image into the current image. \n\n9. When finished labeling all the images, click 'Save' to save all the labels as a .h5 file. \n\n10. Click OK to continue using the labeling GUI. For more tips and hotkeys: see docs!!",
@@ -898,7 +898,7 @@ class MainFrame(BaseFrame):
             self.whiskers = list(self.choice_panel.whiskers.keys())
             self.whiskerparts = self.choice_panel.whiskerparts
 
-            self.buttonCounter = MainFrame.plot(self, self.img_index)
+            self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
         else:
@@ -951,7 +951,7 @@ class MainFrame(BaseFrame):
             self.whiskerparts = self.choice_panel.whiskerparts
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
-            self.buttonCounter = MainFrame.plot(self, self.img_index)
+            self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
         self.labelingMode.Bind(wx.EVT_CHOICE, self.activateLasso)
@@ -988,7 +988,7 @@ class MainFrame(BaseFrame):
         self.prev.Enable(True)
 
         # Checks if zoom/pan button is ON
-        MainFrame.updateZoomPan(self)
+        LabelWhiskersFrame.updateZoomPan(self)
 
         self.statusbar.SetStatusText(
             "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
@@ -998,11 +998,11 @@ class MainFrame(BaseFrame):
         # Refreshing the button counter
         self.buttonCounter = []
 
-        MainFrame.saveEachImage(self)
+        LabelWhiskersFrame.saveEachImage(self)
         self.iter = self.iter + 1
 
         if len(self.index) >= self.iter:
-            self.updatedCoords = MainFrame.getLabels(self, self.iter)
+            self.updatedCoords = LabelWhiskersFrame.getLabels(self, self.iter)
             self.img_index = self.index[self.iter]
             img_name = Path(self.index[self.iter]).name
             self.figure.delaxes(
@@ -1025,7 +1025,7 @@ class MainFrame(BaseFrame):
             self.axes.callbacks.connect("xlim_changed", self.onZoom)
             self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
-            self.buttonCounter = MainFrame.plot(self, self.img_index)
+            self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
             self.add_whisker_detect_layer()
@@ -1041,11 +1041,11 @@ class MainFrame(BaseFrame):
         else:
             self.next.Enable(True)
         # Checks if zoom/pan button is ON
-        MainFrame.updateZoomPan(self)
+        LabelWhiskersFrame.updateZoomPan(self)
         self.statusbar.SetStatusText(
             "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
         )
-        MainFrame.saveEachImage(self)
+        LabelWhiskersFrame.saveEachImage(self)
 
         self.buttonCounter = []
         self.iter = self.iter - 1
@@ -1068,10 +1068,10 @@ class MainFrame(BaseFrame):
         self.axes.callbacks.connect("xlim_changed", self.onZoom)
         self.axes.callbacks.connect("ylim_changed", self.onZoom)
 
-        self.buttonCounter = MainFrame.plot(self, self.img_index)
+        self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
         self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
-        MainFrame.saveEachImage(self)
+        LabelWhiskersFrame.saveEachImage(self)
         self.add_whisker_detect_layer()
 
     def getLabels(self, img_index):
@@ -1114,7 +1114,7 @@ class MainFrame(BaseFrame):
             self.axes.add_patch(circle[0])
             self.dr = auxfun_drag.DraggablePoint(circle[0], self.bodyparts[bpindex])
             self.dr.connect()
-            self.dr.coords = MainFrame.getLabels(self, self.iter)[bpindex]
+            self.dr.coords = LabelWhiskersFrame.getLabels(self, self.iter)[bpindex]
             self.drs.append(self.dr)
             self.updatedCoords.append(self.dr.coords)
             if not np.isnan(self.points)[0]:
@@ -1140,8 +1140,8 @@ class MainFrame(BaseFrame):
         Saves the final dataframe
         """
         self.statusbar.SetStatusText("File saved")
-        MainFrame.saveEachImage(self)
-        MainFrame.updateZoomPan(self)
+        LabelWhiskersFrame.saveEachImage(self)
+        LabelWhiskersFrame.updateZoomPan(self)
 
         # Windows compatible
         self.dataFrame.sort_index(inplace=True)
@@ -1172,7 +1172,7 @@ class MainFrame(BaseFrame):
 
 def show(config, config3d, sourceCam, imtypes=["*.png"]):
     app = wx.App()
-    frame = MainFrame(None, config, imtypes, config3d, sourceCam).Show()
+    frame = LabelWhiskersFrame(None, config, imtypes, config3d, sourceCam).Show()
     app.MainLoop()
 
 

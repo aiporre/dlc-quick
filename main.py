@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import wx
 import wx.grid
 from blockwindow import BlockWindow
@@ -9,10 +11,10 @@ import matplotlib
 import glob
 
 from gui.whisker_detection import DetectWhiskers
+from gui.whisker_label_toolbox import LabelWhiskersFrame
 
 matplotlib.use('Agg')
 print('importing deeplab cut..')
-import deeplabcut as d
 
 print('Done')
 
@@ -105,16 +107,17 @@ class CreateTrainingSet(wx.Frame):
         # input test to set the working directory
         configPathLbl = wx.StaticText(self.panel, -1, "Config path:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         cwd = find_yaml()
+        os.chdir(cwd)
         configPath = wx.FilePickerCtrl(self.panel, -1, cwd, wildcard='*.yaml')
 
         # check box to select automatic or manual selection
         modeLbl = wx.StaticText(self.panel, -1, "Automatic/Manual:")
-        mode = wx.CheckBox(self.panel, -1, "");
+        mode = wx.CheckBox(self.panel, -1, "")
         mode.SetValue(True)
 
         # check box to mode of frames extraction (uniform or kmeans)
         selectionAlgoLbl = wx.StaticText(self.panel, -1, "Uniform/Manual:")
-        selectionAlgo = wx.CheckBox(self.panel, -1, "");
+        selectionAlgo = wx.CheckBox(self.panel, -1, "")
         selectionAlgo.SetValue(True)
 
         # button to remove video
@@ -173,12 +176,12 @@ class ExtractFrames(wx.Frame):
 
         # # check box for user selection
         # userFeedbackLbl = wx.StaticText(self.panel, -1, "User feedback:")
-        # self.userFeedback = wx.CheckBox(self.panel, -1, "");
+        # self.userFeedback = wx.CheckBox(self.panel, -1, "")
         # self.userFeedback.SetValue(True)
 
         # check box to select cropping or not
         croppingLbl = wx.StaticText(self.panel, -1, "Use cropping:")
-        self.cropping = wx.CheckBox(self.panel, -1, "");
+        self.cropping = wx.CheckBox(self.panel, -1, "")
         self.cropping.SetValue(False)
 
         # check box to select automatic or manual selection
@@ -232,7 +235,7 @@ class ExtractFrames(wx.Frame):
 
     def onExtractButton(self, event):
         print('Extraction of the frames....')
-        print('import dlc. ');
+        print('import dlc. ')
         import deeplabcut as d
         mode = self.mode.GetString(self.mode.GetCurrentSelection())
         algo = self.selectionAlgo.GetString(self.selectionAlgo.GetCurrentSelection())
@@ -314,7 +317,7 @@ class AddNewVideos(wx.Frame):
 
         # check box to select copy videos
         copyVideosLbl = wx.StaticText(self.addNewVideosFrame, -1, "Copy videos:")
-        self.copyVideos = wx.CheckBox(self.addNewVideosFrame, -1, "");
+        self.copyVideos = wx.CheckBox(self.addNewVideosFrame, -1, "")
         self.copyVideos.SetValue(True)
 
         listOrPathLbl = wx.StaticText(self.addNewVideosFrame, -1, "Use list or path?")
@@ -440,22 +443,22 @@ class NewProjectFrame(wx.Frame):
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
         # input text to put the name of the project
         nameLbl = wx.StaticText(self.newProjectFrame, -1, "Name:")
-        self.name = wx.TextCtrl(self.newProjectFrame, -1, "");
+        self.name = wx.TextCtrl(self.newProjectFrame, -1, "")
 
         # input text to set experiemnter
         experimenterLbl = wx.StaticText(self.newProjectFrame, -1, "Experimenter:")
-        self.experimenter = wx.TextCtrl(self.newProjectFrame, -1, "");
+        self.experimenter = wx.TextCtrl(self.newProjectFrame, -1, "")
 
         # input test to set the working directory
         wdirLbl = wx.StaticText(self.newProjectFrame, -1, "Working directory:", size=wx.Size(self.WIDTHOFINPUTS, 25))
-        # wdir = wx.TextCtrl(self.newProjectFrame, -1, "");
+        # wdir = wx.TextCtrl(self.newProjectFrame, -1, "")
         # TODO: make default directory the current directory
         cwd = os.getcwd()
         self.wdir = wx.DirPickerCtrl(self.newProjectFrame, -1, cwd)
 
         # check box to select copy videos
         copyVideosLbl = wx.StaticText(self.newProjectFrame, -1, "Copy videos:")
-        self.copyVideos = wx.CheckBox(self.newProjectFrame, -1, "");
+        self.copyVideos = wx.CheckBox(self.newProjectFrame, -1, "")
         self.copyVideos.SetValue(True)
 
         # list of videos to be processed.
@@ -592,27 +595,28 @@ class TrainNetwork(wx.Frame):
         # all_jointsNamesLbl = wx.StaticText(self.panel, -1, "All joints names")
         # all_jointsNames = BlockWindow(self.panel,-1,label=str(pose_config['all_joints_names']), size=(7*len(str(pose_config['all_joints_names'])),25))
 
-        leftwidthLbl = wx.StaticText(self.panel, -1, "left width")
-        self.leftwidth = wx.TextCtrl(self.panel, -1, str(pose_config['leftwidth']))
+        # leftwidthLbl = wx.StaticText(self.panel, -1, "left width")
+        # print('pose_config fields: ', pose_config.keys())
+        # self.leftwidth = wx.TextCtrl(self.panel, -1, str(pose_config['leftwidth']))
 
-        minsizeLbl = wx.StaticText(self.panel, -1, "minsize")
-        self.minsize = wx.TextCtrl(self.panel, -1, str(pose_config["minsize"]))
-        self.minsize.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.minsize))
+        # minsizeLbl = wx.StaticText(self.panel, -1, "minsize")
+        # self.minsize = wx.TextCtrl(self.panel, -1, str(pose_config["minsize"]))
+        # self.minsize.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.minsize))
 
-        rightwidthLbl = wx.StaticText(self.panel, -1, "rightwidth")
-        self.rightwidth = wx.TextCtrl(self.panel, -1, str(pose_config['rightwidth']))
-        self.rightwidth.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.rightwidth))
+        # rightwidthLbl = wx.StaticText(self.panel, -1, "rightwidth")
+        # self.rightwidth = wx.TextCtrl(self.panel, -1, str(pose_config['rightwidth']))
+        # self.rightwidth.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.rightwidth))
 
-        topheightLbl = wx.StaticText(self.panel, -1, "topheight")
-        self.topheight = wx.TextCtrl(self.panel, -1, str(pose_config['topheight']))
-        self.topheight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.topheight))
+        # topheightLbl = wx.StaticText(self.panel, -1, "topheight")
+        # self.topheight = wx.TextCtrl(self.panel, -1, str(pose_config['topheight']))
+        # self.topheight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.topheight))
 
-        bottomheightLbl = wx.StaticText(self.panel, -1, "Bottom height")
-        self.bottomheight = wx.TextCtrl(self.panel, -1, str(pose_config['bottomheight']))
+        # bottomheightLbl = wx.StaticText(self.panel, -1, "Bottom height")
+        # self.bottomheight = wx.TextCtrl(self.panel, -1, str(pose_config['bottomheight']))
 
-        cropLbl = wx.StaticText(self.panel, -1, "Crop")
-        self.crop = wx.CheckBox(self.panel, -1, "")
-        self.crop.SetValue(pose_config['crop'])
+        # cropLbl = wx.StaticText(self.panel, -1, "Crop")
+        # self.crop = wx.CheckBox(self.panel, -1, "")
+        # self.crop.SetValue(pose_config['crop'])
 
         cropRatioLbl = wx.StaticText(self.panel, -1, "Crop ratio")
         self.cropRatio = wx.SpinCtrlDouble(self.panel, id=-1, min=0, max=1, initial=pose_config['cropratio'], inc=0.1)
@@ -753,20 +757,21 @@ class TrainNetwork(wx.Frame):
         # inputSizer.Add(all_jointsNames, 0, wx.EXPAND, 2)
 
         # Cropping image part of aug.
-        inputSizer.Add(cropLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.crop, 0, wx.EXPAND, 2)
+        # inputSizer.Add(cropLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.crop, 0, wx.EXPAND, 2)
         inputSizer.Add(cropRatioLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.cropRatio, 0, wx.EXPAND, 2)
-        inputSizer.Add(minsizeLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.minsize, 0, wx.EXPAND, 2)
-        inputSizer.Add(leftwidthLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.leftwidth, 0, wx.EXPAND, 2)
-        inputSizer.Add(rightwidthLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.rightwidth, 0, wx.EXPAND, 2)
-        inputSizer.Add(bottomheightLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.bottomheight, 0, wx.EXPAND, 2)
-        inputSizer.Add(topheightLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.topheight, 0, wx.EXPAND, 2)
+        # inputSizer.Add(minsizeLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.minsize, 0, wx.EXPAND, 2)
+        # inputSizer.Add(leftwidthLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.leftwidth, 0, wx.EXPAND, 2)
+        # inputSizer.Add(rightwidthLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.rightwidth, 0, wx.EXPAND, 2)
+        # inputSizer.Add(bottomheightLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.bottomheight, 0, wx.EXPAND, 2)
+        # inputSizer.Add(topheightLbl, 0, wx.EXPAND, 2)
+        # inputSizer.Add(self.topheight, 0, wx.EXPAND, 2)
+
         inputSizer.Add(globalScaleLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.globalScale, 0, wx.EXPAND, 2)
         inputSizer.Add(pos_dist_threshLbl, 0, wx.EXPAND, 2)
@@ -1226,7 +1231,7 @@ class FilterPredictions(wx.Frame):
         self.alpha.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.alpha))
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
-        self.saveAsCSV = wx.CheckBox(self.panel, -1, "");
+        self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
@@ -1345,11 +1350,11 @@ class PlotPredictions(wx.Frame):
         self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
 
         filteredLbl = wx.StaticText(self.panel, -1, "Filtered:")
-        self.filtered = wx.CheckBox(self.panel, -1, "");
+        self.filtered = wx.CheckBox(self.panel, -1, "")
         self.filtered.SetValue(False)
 
         showFiguresLbl = wx.StaticText(self.panel, -1, "Show figures:")
-        self.showFigures = wx.CheckBox(self.panel, -1, "");
+        self.showFigures = wx.CheckBox(self.panel, -1, "")
         self.showFigures.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
@@ -1452,12 +1457,12 @@ class LabelPredictions(wx.Frame):
 
         # filtered
         filteredLbl = wx.StaticText(self.panel, -1, "Filtered:")
-        self.filtered = wx.CheckBox(self.panel, -1, "");
+        self.filtered = wx.CheckBox(self.panel, -1, "")
         self.filtered.SetValue(False)
 
         # save frames
         saveFramesLbl = wx.StaticText(self.panel, -1, "Save frames:")
-        self.saveFrames = wx.CheckBox(self.panel, -1, "");
+        self.saveFrames = wx.CheckBox(self.panel, -1, "")
         self.saveFrames.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
@@ -1483,7 +1488,7 @@ class LabelPredictions(wx.Frame):
 
         # draw skeleton
         drawSkeletonLbl = wx.StaticText(self.panel, -1, "Draw skeleton:")
-        self.drawSkeleton = wx.CheckBox(self.panel, -1, "");
+        self.drawSkeleton = wx.CheckBox(self.panel, -1, "")
         self.drawSkeleton.SetValue(False)
         parent = '' if self.destfolderParent is None else self.destfolderParent
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
@@ -1663,7 +1668,7 @@ class ExtractOutliers(wx.Frame):
 
         # Cluster Color
         clusterColorLbl = wx.StaticText(self.panel, -1, "Cluster Color:")
-        self.clusterColor = wx.CheckBox(self.panel, -1, "");
+        self.clusterColor = wx.CheckBox(self.panel, -1, "")
         self.clusterColor.SetValue(False)
 
         # Cluster resize width
@@ -1673,12 +1678,12 @@ class ExtractOutliers(wx.Frame):
 
         # automatic
         automaticLbl = wx.StaticText(self.panel, -1, "Automatic:")
-        self.automatic = wx.CheckBox(self.panel, -1, "");
+        self.automatic = wx.CheckBox(self.panel, -1, "")
         self.automatic.SetValue(False)
 
         # Save Labeled
         saveLabeledLbl = wx.StaticText(self.panel, -1, "Save laveled:")
-        self.saveLabeled = wx.CheckBox(self.panel, -1, "");
+        self.saveLabeled = wx.CheckBox(self.panel, -1, "")
         self.saveLabeled.SetValue(True)
 
         bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
@@ -1854,10 +1859,11 @@ class AnalyzeVideos(wx.Frame):
 
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
         self.shuffle = wx.TextCtrl(self.panel, -1, "1")
+        shuffle = self.shuffle.GetSelection()
         self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, shuffle))
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
-        self.saveAsCSV = wx.CheckBox(self.panel, -1, "");
+        self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
@@ -2104,6 +2110,7 @@ class MainFrame(wx.Frame):
                                                'extract frames',
                                                'detect whiskers',
                                                'label frames',
+                                               'label whiskers',
                                                'check annotations'],
                                               size=(200, 25),
                                               type='button')
@@ -2111,6 +2118,7 @@ class MainFrame(wx.Frame):
         items['add new videos'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'add new videos'))
         items['extract frames'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'extract frames'))
         items['detect whiskers'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'detect whiskers'))
+        items['label whiskers'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'label whiskers'))
 
         items['label frames'].Bind(wx.EVT_BUTTON, self.on_label_frames)
         items['check annotations'].Bind(wx.EVT_BUTTON, self.on_check_annotations)
@@ -2138,6 +2146,8 @@ class MainFrame(wx.Frame):
         configPathLbl = wx.StaticText(self.mainPanel, -1, "Config path:", size=wx.Size(600, 25))
         cwd = find_yaml()
         self.configPath = wx.FilePickerCtrl(self.mainPanel, -1, cwd, wildcard='*.yaml')
+        self.configPath.Bind(wx.EVT_FILEPICKER_CHANGED, self.on_config_path_picked)
+        self.startpath = os.getcwd()
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -2212,6 +2222,11 @@ class MainFrame(wx.Frame):
             frame = EvaluaterNetwork(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'analyze videos':
             frame = AnalyzeVideos(self.GetParent(), config=self.configPath.GetPath())
+        elif frame_type == 'label whiskers':
+            frame = LabelWhiskersFrame(self.GetParent(), config=self.configPath.GetPath(), imtypes=["*.png"], config3d=None, sourceCam=None)
+
+
+
         else:
             return
         frame.Show()
@@ -2223,6 +2238,11 @@ class MainFrame(wx.Frame):
     def OnMergeDataset(self, event):
         import deeplabcut as d
         d.merge_datasets(self.configPath.GetPath())
+
+    def on_config_path_picked(self, event):
+        print('===> on config path picked!! ')
+        wd = Path(self.configPath.GetPath()).resolve().parents[0]
+        os.chdir(str(wd))
 
 
 class MainPanel(wx.Panel):
