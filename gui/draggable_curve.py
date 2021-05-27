@@ -79,7 +79,6 @@ class DraggableCurve:
         # this is done check cosine law to be acute angles
         cos_1 = (R ** 2 + d1 ** 2 - d2 ** 2) / (2 * d1 * x)
         cos_2 = (R ** 2 + d2 ** 2 - d1 ** 2) / (2 * d2 * x)
-        print(' cosines: 1 = ', cos_1, ' cos 2 =  ', cos_2 )
         if cos_1 > 0 and cos_2 > 0:
             # calculates the distance to the segment using the distance from a point to a line formula
             # computes line
@@ -88,7 +87,6 @@ class DraggableCurve:
             C = s1[1]* (s2[0] - s1[0]) - s1[0] * A
             # evaluates distance = |Axo+Byo+C|/sqrt(A^2+B^2)
             projected_dist = math.fabs(A * x + B * y + C) / math.sqrt(A ** 2 + B ** 2) if A !=0 and B !=0 else math.inf
-            print('projected distance: ', projected_dist)
             if projected_dist < self.selection_radius:
                 # checks if distance is less that the selection radius
                 is_close = True
