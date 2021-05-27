@@ -2213,7 +2213,7 @@ class MainFrame(wx.Frame):
         elif frame_type == 'extract frames':
             frame = ExtractFrames(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'detect whiskers':
-            frame = DetectWhiskers(self.GetParent(), dlc_config=self.configPath.GetPath())
+            frame = DetectWhiskers(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'create training set':
             frame = CreateTraining(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'train network':

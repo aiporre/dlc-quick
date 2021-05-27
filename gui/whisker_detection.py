@@ -8,11 +8,11 @@ from deeplabcut.utils import auxiliaryfunctions
 
 
 class DetectWhiskers(BaseFrame):
-    def __init__(self, parent, title='Detect Whiskers', dlc_config=None):
+    def __init__(self, parent, title='Detect Whiskers', config=None):
         super(DetectWhiskers, self).__init__(parent=parent, frame_title=title)
         self.panel = WidgetPanel(self)
         self.WIDTHOFINPUTS = 400
-        self.config = dlc_config
+        self.config = config
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Detect whiskers ")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -126,7 +126,7 @@ class DetectWhiskers(BaseFrame):
 
 def show(config):
     app = wx.App()
-    frame = DetectWhiskers(None, dlc_config=config).Show()
+    frame = DetectWhiskers(None, config=config).Show()
     app.MainLoop()
 
 
