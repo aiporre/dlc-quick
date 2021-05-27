@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import math
+from matplotlib.patches import Polygon
+import wx
 
 class DraggableCurve:
     '''
@@ -27,7 +29,7 @@ class DraggableCurve:
         self.point_set = point_set
         self.new_point_set = point_set
 
-        self.curve_patch = plt.Polygon(self.point_set, closed=False, fill=False, linewidth=3, color='#F97306')
+        self.curve_patch = Polygon(self.point_set, closed=False, fill=False, linewidth=3, color='#F97306')
 
         self._axes.add_patch(self.curve_patch)
 
@@ -38,6 +40,13 @@ class DraggableCurve:
         self.cidmotion = self._figure.canvas.mpl_connect(
             'motion_notify_event', self._on_motion)
         self.selection_radius = selection_radius
+        self.active = True
+
+    def _disconnect(self):
+        "disconnect all the stored connection ids"
+        self._figure.canvas.mpl_disconnect(self.cidclick)
+        self._figure.canvas.mpl_disconnect(self.cidrelease)
+        self._figure.canvas.mpl_disconnect(self.cidmotion)
 
     def _on_click(self, event):
         '''
@@ -46,13 +55,30 @@ class DraggableCurve:
         :param event:
         :return:
         '''
-        if event.button == 1  and event.inaxes == self._axes and not DraggableCurve.click_down == self:
+        # if not self.active:
+        #     return
+
+        if DraggableCurve.click_down is None and event.inaxes == self._axes:
             is_contained = self._is_close_to_segment(event)
             print('Clicked on curve? ', is_contained)
-            if is_contained:
-                self.click = event.xdata, event.ydata
-                DraggableCurve.click_down = self
+            if not is_contained:
+                return
+            # if left click then the curve is moved
+            if event.button == 1:
+                if is_contained:
+                    self.click = event.xdata, event.ydata
+                    DraggableCurve.click_down = self
+            elif event.button == 2:
+                # if central button then the whisker is deleted.
+                self._delete_data()
 
+    def _delete_data(self):
+        DraggableCurve.lock = None
+        self.curve_patch.set_visible(False)
+        self.click = None
+        self.active = False
+        self._disconnect()
+        self._figure.canvas.draw()
 
     def _is_close_to_segment(self, event):
         '''
@@ -104,6 +130,9 @@ class DraggableCurve:
         :param event:
         :return:
         '''
+        # if not self.active:
+        #     return
+
         if DraggableCurve.click_down == self:
             self.click = None
             DraggableCurve.click_down = None
@@ -117,8 +146,12 @@ class DraggableCurve:
         :param event:
         :return:
         '''
+        #
+        # if not self.active:
+        #     return
+        #
         if DraggableCurve.click_down == self:
-            if event.inaxes == self._axes:
+            if event.inaxes == self._axes and event.button == 1:
                 xclick, yclick = self.click
 
                 # compute shift respect from the click point
@@ -133,6 +166,9 @@ class DraggableCurve:
                 self.new_point_set = list(zip(xdx, ydy))
                 self.curve_patch.set_xy(self.new_point_set)
                 self.curve_patch.figure.canvas.draw()
+
+
+
 
 if __name__ == '__main__':
     geometry = [[0.0, 0.0], [0.1, 0.05], [0.2, 0.15], [0.3, 0.20], [0.4, 0.25], [0.5, 0.30],
