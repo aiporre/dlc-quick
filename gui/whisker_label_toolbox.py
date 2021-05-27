@@ -29,6 +29,7 @@ from gui import auxfun_drag
 from deeplabcut.utils import auxiliaryfunctions, auxiliaryfunctions_3d
 from gui.utils import parse_yaml
 from gui.utils.interpolation import uniform_interpolation
+from gui.draggable_curve import DraggableCurve
 
 class WhiskerDetection:
     def __init__(self, label_dir):
@@ -431,6 +432,9 @@ class MainFrame(BaseFrame):
         self.prezoom_xlim = []
         self.prezoom_ylim = []
 
+        # draggable whisker prelabels
+        self.draggable_whiskers = []
+
 
     def on_select(self, verts):
         '''
@@ -647,7 +651,7 @@ class MainFrame(BaseFrame):
         frame_time = int(os.path.basename(self.img_index).split('.')[0][3:])
         ws_coords = self.whisker_detection.get_whisker(frame_time)
         for c in ws_coords:
-            self.axes.plot(c[4], c[5], 'r')
+            self.draggable_whiskers.append(DraggableCurve(list(zip(c[4], c[5])), selection_radius=3, figure=self.figure, axes=self.axes))
         self.figure.canvas.draw()
 
     def make_new_label(self, x1, y1):

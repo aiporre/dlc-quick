@@ -8,23 +8,30 @@ class DraggableCurve:
 
     click_down = False # flag that signs click has been issued
 
-    def __init__(self, point_set, selection_radius=0.02):
+    def __init__(self, point_set, figure=None, axes=None, selection_radius=0.02):
         '''
 
         :param point_set: Point
         :param selection_radius:
         '''
         # figure initialization:
-        self._figure = plt.figure("Example plot")
-        self._axes = self._figure.add_subplot(111)
-        self.point_set = point_set
+        if figure is None:
+            self._figure = plt.figure("Example plot")
+            self._axes = self._figure.add_subplot(111)
+            self._axes.grid(which='both')
+        else:
+            assert axes is not None, 'When figure is input \'axes\' must be specified.'
+            self._figure = figure
+            self._axes = axes
 
-        self._axes.grid(which='both')
+        self.point_set = point_set
+        self.new_point_set = point_set
+
         self.curve_patch = plt.Polygon(self.point_set, closed=False, fill=False, linewidth=3, color='#F97306')
 
         self._axes.add_patch(self.curve_patch)
 
-        self.cidclick = self._figure.canvas.mpl_connect(
+        self.cidclick = self.curve_patch.figure.canvas.mpl_connect(
             'button_press_event', self._on_click)
         self.cidrelease = self._figure.canvas.mpl_connect(
             'button_release_event', self._on_release)
@@ -41,6 +48,7 @@ class DraggableCurve:
         '''
         if event.button == 1  and event.inaxes == self._axes:
             is_contained = self._is_close_to_segment(event)
+            print('Clicked on curve? ', is_contained)
             if is_contained:
                 self.click = event.xdata, event.ydata
                 self.click_down = True
@@ -63,6 +71,7 @@ class DraggableCurve:
             if dist < min_dist:
                 min_dist = dist
                 s1, s2 = p1, p2
+        print(' segment 1 and 2: s1 = ', s1, '  s2 = ', s2)
         # checks if the points projects on segment. Shadow of point lies in the segment?
         R = math.hypot(s1[0] - s2[0], s1[1] - s2[1])
         d1 = math.hypot(s1[0] - x, s1[1] - y)
@@ -70,14 +79,16 @@ class DraggableCurve:
         # this is done check cosine law to be acute angles
         cos_1 = (R ** 2 + d1 ** 2 - d2 ** 2) / (2 * d1 * x)
         cos_2 = (R ** 2 + d2 ** 2 - d1 ** 2) / (2 * d2 * x)
+        print(' cosines: 1 = ', cos_1, ' cos 2 =  ', cos_2 )
         if cos_1 > 0 and cos_2 > 0:
             # calculates the distance to the segment using the distance from a point to a line formula
             # computes line
-            A = (s2[1] - s1[1]) / (s2[0] - s1[0])
-            B = -1
-            C = s1[1] - s1[0] * A
+            A = (s2[1] - s1[1])
+            B = -(s2[0] - s1[0])
+            C = s1[1]* (s2[0] - s1[0]) - s1[0] * A
             # evaluates distance = |Axo+Byo+C|/sqrt(A^2+B^2)
-            projected_dist = math.fabs(A * x + B * y + C) / math.sqrt(A ** 2 + B ** 2)
+            projected_dist = math.fabs(A * x + B * y + C) / math.sqrt(A ** 2 + B ** 2) if A !=0 and B !=0 else math.inf
+            print('projected distance: ', projected_dist)
             if projected_dist < self.selection_radius:
                 # checks if distance is less that the selection radius
                 is_close = True
@@ -98,7 +109,7 @@ class DraggableCurve:
         if self.click_down:
             self.click = None
             self.click_down = False
-            self.point_set = self.new_point_set
+            self.point_set = self.new_point_set if self.new_point_set is not None else self.point_set
 
 
     def _on_motion(self, event):
