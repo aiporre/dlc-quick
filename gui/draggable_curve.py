@@ -6,7 +6,7 @@ class DraggableCurve:
     Draggable Curve
     '''
 
-    click_down = False # flag that signs click has been issued
+    click_down = None # flag that signs click has been issued
 
     def __init__(self, point_set, figure=None, axes=None, selection_radius=0.02):
         '''
@@ -46,12 +46,12 @@ class DraggableCurve:
         :param event:
         :return:
         '''
-        if event.button == 1  and event.inaxes == self._axes:
+        if event.button == 1  and event.inaxes == self._axes and not DraggableCurve.click_down == self:
             is_contained = self._is_close_to_segment(event)
             print('Clicked on curve? ', is_contained)
             if is_contained:
                 self.click = event.xdata, event.ydata
-                self.click_down = True
+                DraggableCurve.click_down = self
 
 
     def _is_close_to_segment(self, event):
@@ -104,9 +104,9 @@ class DraggableCurve:
         :param event:
         :return:
         '''
-        if self.click_down:
+        if DraggableCurve.click_down == self:
             self.click = None
-            self.click_down = False
+            DraggableCurve.click_down = None
             self.point_set = self.new_point_set if self.new_point_set is not None else self.point_set
 
 
@@ -117,7 +117,7 @@ class DraggableCurve:
         :param event:
         :return:
         '''
-        if self.click_down:
+        if DraggableCurve.click_down == self:
             if event.inaxes == self._axes:
                 xclick, yclick = self.click
 
