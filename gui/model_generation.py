@@ -5,6 +5,7 @@ import wx
 
 from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
+from gui.dataset_generation import ContactDataset
 
 
 class ContactModelGeneration(BaseFrame):
@@ -197,6 +198,7 @@ class ContactModelGeneration(BaseFrame):
 
     def on_generate_dataset(self, event):
         print('Generate dataset....')
+
 
     def on_new_frame(self, event, frame_type):
         print('open new window: ', frame_type)
