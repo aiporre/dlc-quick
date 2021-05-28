@@ -849,18 +849,18 @@ class TrainNetwork(wx.Frame):
         print('Training...')
         pose_config = self.read_fields()
         pose_config_file = self.read_fields(parse=False)
-        pose_config['bottomheight'] = int(self.bottomheight.GetValue())
-        pose_config['crop'] = self.crop.GetValue()
-        pose_config['cropration'] = float(self.crop.GetValue())
+        # pose_config['bottomheight'] = int(self.bottomheight.GetValue())
+        # pose_config['crop'] = self.crop.GetValue()
+        pose_config['cropratio'] = float(self.cropRatio.GetValue())
         pose_config['display_iters'] = int(self.displayIters.GetValue())
         pose_config['global_scale'] = float(self.displayIters.GetValue())
         pose_config['init_weights'] = self.initWeights.GetValue()
         pose_config['intermediate_supervision'] = self.intermediateSupervision.GetValue()
         pose_config['intermediate_supervision_layer'] = int(self.intermediate_supervision_layer.GetValue())
-        pose_config['leftwidth'] = int(self.leftwidth.GetValue())
+        # pose_config['leftwidth'] = int(self.leftwidth.GetValue())
         pose_config['max_input_size'] = int(self.max_input_size.GetValue())
         pose_config['min_input_size'] = int(self.min_input_size.GetValue())
-        pose_config['minsize'] = int(self.minsize.GetValue())
+        # pose_config['minsize'] = int(self.minsize.GetValue())
         pose_config['mirror'] = self.mirror.GetValue()
 
         count = self.multistep.GetItemCount()
@@ -870,11 +870,11 @@ class TrainNetwork(wx.Frame):
 
         pose_config['net_type'] = self.net_type.GetValue()
         pose_config['pos_dist_thresh'] = int(self.pos_dist_thresh.GetValue())
-        pose_config['rightwidth'] = int(self.rightwidth.GetValue())
+        # pose_config['rightwidth'] = int(self.rightwidth.GetValue())
         pose_config['save_iters'] = int(self.save_iters.GetValue())
         pose_config['scale_jitter_lo'] = float(self.scale_jitter_lo.GetValue())
         pose_config['scale_jitter_up'] = float(self.scale_jitter_up.GetValue())
-        pose_config['topheight'] = int(self.topheight.GetValue())
+        # pose_config['topheight'] = int(self.topheight.GetValue())
         config = parser_yaml(self.config)
         pose_config['project_path'] = pose_config['project_path']
         print('CONFIG POSE:')
@@ -1852,7 +1852,11 @@ class AnalyzeVideos(wx.Frame):
         # input test to set the working directory
         targetVideosLbl = wx.StaticText(self.panel, -1, "Target videos path:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         # TODO: make default path find yaml in the current directory
+        config_dlc = parser_yaml(self.config)
         self.targetVideos = wx.DirPickerCtrl(self.panel, -1)
+        self.project_path = config_dlc['project_path']
+        self.targetVideos.SetPath(os.join(self.project_path,'videos'))
+        os.chdir(self.project_path)
 
         listOrPathLbl = wx.StaticText(self.panel, -1, "Use list or path?")
         self.listOrPath = wx.Choice(self.panel, id=-1, choices=['target videos path', 'target videos list'])
