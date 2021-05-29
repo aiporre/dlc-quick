@@ -6,7 +6,16 @@ import wx
 from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
 from gui.dataset_generation import ContactDataset
+from gui.utils.snapshot_index import get_snapshot_index
 
+
+def get_videos(videosList):
+    count = videosList.GetItemCount()
+    videos = []
+    for row in range(count):
+        item = videosList.GetItem(itemIdx=row, col=1)
+        videos.append(item.GetText())
+    return videos
 
 class ContactModelGeneration(BaseFrame):
     def __init__(self, parent, CWD, title='Contact Model Generation', config=None):
@@ -47,7 +56,7 @@ class ContactModelGeneration(BaseFrame):
 
         # 4. format of video in path
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type to search in videos path:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".mp4")
+        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
 
         # 5. GPU configurations
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
@@ -198,6 +207,43 @@ class ContactModelGeneration(BaseFrame):
 
     def on_generate_dataset(self, event):
         print('Generate dataset....')
+        if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
+            targetVideosPath = self.targetVideos.GetPath()
+            videos = [os.path.join(targetVideosPath,v_path)  for v_path in os.listdir(targetVideosPath) if v_path.endswith(self.videoType.GetValue())]
+        else:  # 'target videos list'
+            videos = get_videos(self.videosList)
+        print('Videos: ', videos)
+        # generate pairs (video_path, labels_path)
+        # if labels_path doesn't exists for video it will stop and ask you to analyze videos first
+        pairs = []
+        for video_path in videos:
+            if not video_path.endswith(self.videoType.GetValue()):
+                print('skipping video_path: ', video_path)
+                continue
+            video_dir_path = os.path.dirname(video_path)
+            files = os.listdir(video_dir_path)
+
+            # analyze files in video dir path looking for the labels_path pair.
+            labels_path = None
+            for f in files:
+                v_name = os.path.splitext(os.path.basename(f))[0]
+                f_name = os.path.basename(f)
+                snapshot_index = get_snapshot_index(self.config, self.shuffle.GetValue()).split("-")[1]
+                if f_name.startswith(v_name) and f_name.endswith('shuffle'+str(self.shuffle.GetValue()) + '_' + str(snapshot_index) + ".csv"):
+                    labels_path = os.path.join(video_dir_path, f)
+                    break
+            # labels_path coulnd be found then stop generation.
+            if labels_path is None:
+                msg = f'Analysis for video: {video_path} is missing. Please run Analyze Video first.'
+                dialog = wx.MessageDialog(self, msg, "Error", wx.OK | wx.STAY_ON_TOP | wx.CENTRE)
+                dialog.ShowModal()
+                return
+            pairs.append((video_path, labels_path))
+        print('PAIRS: ', pairs)
+        # if pairs generated then run generation fo files for each pair
+        for v_path, l_path in pairs:
+            print(f'video path = {v_path} label path =  {l_path}')
+            ContactDataset(labels_path=l_path, video_path=v_path, dest_path=self.destfolder.GetPath()).genenerate_dataset()
 
 
     def on_new_frame(self, event, frame_type):
