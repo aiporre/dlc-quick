@@ -3,7 +3,7 @@ from matplotlib.image import imsave
 import os
 from random import sample
 from gui.utils.video_reading import read_video
-
+from tqdm import tqdm
 class ContactDataset:
     def __init__(self, labels_path, video_path, dest_path):
         self.labels_path = labels_path
@@ -27,6 +27,7 @@ class ContactDataset:
         # get whisker labels
 
         self.whisker_labels = list(set([''.join(i for i in bp if not i.isdigit()) for bp in self.body_parts if bp.startswith('w')]))
+        self.whisker_labels.sort()
         def get_num_items(body_parts, whisker_label):
             print('body parts: ' , body_parts)
             print('whisker label: ', whisker_label)
@@ -74,11 +75,11 @@ class ContactDataset:
         for i in range(whisker.index.values.max()):
             whisker_at_n = self.get_whisker_at(whisker, i)
             if len(whisker_at_n) == 10:
-                print('at ', i, ' whisker ', whisker_label, ' has ', len(whisker_at_n))
+                # print('at ', i, ' whisker ', whisker_label, ' has ', len(whisker_at_n))
                 interesting_frames.append(i)
         return [j for j in range(video_length) if j not in interesting_frames]
 
-    def genenerate_dataset(self):
+    def generate_dataset(self):
         prefix = os.path.splitext(os.path.basename(self.video_path))[0]
 
         for whisker_label  in self.whisker_labels:
@@ -93,18 +94,23 @@ class ContactDataset:
                 os.mkdir(os.path.join(self.dest_path, 'negative_frames'))
 
 
-            for i, p in zip(positive_frames, p_frames):
+            for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({whisker_label}): ', total=len(p_frames)):
+                # TODO: image file type is Harcoded!
                 imsave(os.path.join(self.dest_path,'positive_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
             # extranting negative frames
-            negative_frames = sample(self.capture_negative_frames(whisker_label=whisker_label), len(positive_frames))
-            n_frames = [self.video_frames[i] for i in negative_frames]
-            for i, p in zip(negative_frames, n_frames):
-                imsave(os.path.join(self.dest_path,'negative_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+            negative_frames = self.capture_negative_frames(whisker_label=whisker_label)
+            if len(negative_frames) > len(positive_frames):
+                negative_frames = sample(negative_frames, len(positive_frames))
 
+            n_frames = [self.video_frames[i] for i in negative_frames]
+            for i, p in tqdm(zip(negative_frames, n_frames), desc=f'Saving Negative frames ({whisker_label}): ', total=len(n_frames)):
+                # TODO: image file type is Harcoded!
+                imsave(os.path.join(self.dest_path,'negative_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+        print('done')
 
 if __name__ == '__main__':
     labels_path = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/videos/#48_2020-10-25_P3.6_ruleswitch_two_textures_punishrepeat_session03_videos_hispeed2_video_sec45DLC_resnet50_testMay11shuffle1_10.csv'
     video_path = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/videos/#48_2020-10-25_P3.6_ruleswitch_two_textures_punishrepeat_session03_videos_hispeed2_video_sec45.avi'
     dest_path = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/training-datasets/iteration-0'
 
-    ContactDataset(labels_path, video_path, dest_path).genenerate_dataset()
+    ContactDataset(labels_path, video_path, dest_path).generate_dataset()
