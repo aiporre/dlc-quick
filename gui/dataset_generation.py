@@ -1,9 +1,32 @@
 import pandas as pd
+import cv2
+from deeplabcut.utils import VideoReader
 from matplotlib.image import imsave
 import os
 from random import sample
 from gui.utils.video_reading import read_video
+from wwutils.video import get_frame
 from tqdm import tqdm
+
+class VideoReaderArray(VideoReader):
+    def __init__(self, video_path):
+        super().__init__(video_path=video_path)
+        self._current_index = self.video.get(cv2.CAP_PROP_POS_FRAMES)
+
+    def __getitem__(self, index):
+
+        # if not current sets to the target index
+        if index != self._current_index:
+            current_frame_index = self.video.get(cv2.CAP_PROP_POS_FRAMES)
+            # double check here to avoid incorrect reading
+            if index != current_frame_index:
+                self.set_to_frame(index)
+        frame = self.read_frame()
+        self._current_index +=1
+        return frame
+
+
+
 class ContactDataset:
     def __init__(self, labels_path, video_path, dest_path):
         self.labels_path = labels_path
@@ -22,7 +45,12 @@ class ContactDataset:
             pivot += 3
 
         # reading video frames
-        self.video_frames =  read_video(video_path)
+        try:
+            self.video_frames =  read_video(video_path)
+        except MemoryError as e:
+            print('ERROR: ' + str(e))
+            self.video_frames = VideoReaderArray(video_path)
+
 
         # get whisker labels
 
