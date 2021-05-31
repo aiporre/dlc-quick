@@ -284,6 +284,11 @@ class CorrectionsFrame(BaseFrame):
 
         if len(imlist) == 0:
             print("No images found!!")
+            self.selected_dir = None
+            self.load.Enable(True)
+            self.next.Enable(False)
+            self.save.Enable(False)
+            return
         else:
             print(f'{len(imlist)} images found')
 

@@ -255,8 +255,7 @@ class ContactModelGeneration(BaseFrame):
             return
         elif frame_type == 'make corrections':
             # frame = FilterPredictions(self.GetParent(), config=self.config)
-            print(' corrections frame//// ')
-            frame = CorrectionsFrame(self.GetParent(), config, ['*.png'])
+            frame = CorrectionsFrame(self.GetParent(), self.config, ['*.png'])
         # elif frame_type == 'train model':
         #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
         #         videos = self.targetVideos.GetPath()
