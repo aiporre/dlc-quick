@@ -5,6 +5,8 @@ import wx
 
 from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
+
+from gui.corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import ContactDataset
 from gui.utils.snapshot_index import get_snapshot_index
 
@@ -25,7 +27,7 @@ class ContactModelGeneration(BaseFrame):
         self.WIDTHOFINPUTS = 420
         self.config = config
         # # title in the panel
-        topLbl = wx.StaticText(self.panel, -1, "Contact Model Generation")
+        topLbl = wx.StaticText(self.panel, -1, title)
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # # Components definition:
@@ -90,7 +92,7 @@ class ContactModelGeneration(BaseFrame):
 
         # button to make manual corrections in the dataset
         correctionsButton = wx.Button(self.panel, label='Make Corrections')
-        correctionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, ' make corrections'))
+        correctionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'make corrections'))
 
         # button to train contact model
         trainButton = wx.Button(self.panel, label='Train Model')
@@ -243,7 +245,7 @@ class ContactModelGeneration(BaseFrame):
         # if pairs generated then run generation fo files for each pair
         for v_path, l_path in pairs:
             print(f'video path = {v_path} label path =  {l_path}')
-            ContactDataset(labels_path=l_path, video_path=v_path, dest_path=self.destfolder.GetPath()).genenerate_dataset()
+            ContactDataset(labels_path=l_path, video_path=v_path, dest_path=self.destfolder.GetPath()).generate_dataset()
 
 
     def on_new_frame(self, event, frame_type):
@@ -251,8 +253,10 @@ class ContactModelGeneration(BaseFrame):
         if frame_type is None or len(frame_type) == 0:  # empty string:
             print('new frame not specified in button!! ')
             return
-        # elif frame_type == 'make corrections':
-        #     frame = FilterPredictions(self.GetParent(), config=self.config)
+        elif frame_type == 'make corrections':
+            # frame = FilterPredictions(self.GetParent(), config=self.config)
+            print(' corrections frame//// ')
+            frame = CorrectionsFrame(self.GetParent(), config, ['*.png'])
         # elif frame_type == 'train model':
         #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
         #         videos = self.targetVideos.GetPath()

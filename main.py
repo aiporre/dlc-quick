@@ -1855,7 +1855,7 @@ class AnalyzeVideos(wx.Frame):
         config_dlc = parser_yaml(self.config)
         self.targetVideos = wx.DirPickerCtrl(self.panel, -1)
         self.project_path = config_dlc['project_path']
-        self.targetVideos.SetPath(os.join(self.project_path,'videos'))
+        self.targetVideos.SetPath(os.path.join(self.project_path,'videos'))
         os.chdir(self.project_path)
 
         listOrPathLbl = wx.StaticText(self.panel, -1, "Use list or path?")
