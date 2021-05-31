@@ -10,6 +10,7 @@ import sys
 import matplotlib
 import glob
 
+from gui.model_generation import ContactModelGeneration
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 
@@ -2140,18 +2141,20 @@ class MainFrame(wx.Frame):
 
         # refinement
         box3, items = self.MakeStaticBoxSizer("Refinement",
-                                              ['analyze videos', 'refine labels', 'merge datasets'],
+                                              ['analyze videos', 'refine labels', 'merge datasets', 'create whisking model'],
                                               size=(200, 25),
                                               type='button')
         items['analyze videos'].Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'analyze videos'))
         items['refine labels'].Bind(wx.EVT_BUTTON, self.OnRefineLabels)
         items['merge datasets'].Bind(wx.EVT_BUTTON, self.OnMergeDataset)
+        items['create whisking model'].Bind(wx.EVT_BUTTON, self.onCreateWhiskingModel)
         # config path selection:
         configPathLbl = wx.StaticText(self.mainPanel, -1, "Config path:", size=wx.Size(600, 25))
         cwd = find_yaml()
         self.configPath = wx.FilePickerCtrl(self.mainPanel, -1, cwd, wildcard='*.yaml')
         self.configPath.Bind(wx.EVT_FILEPICKER_CHANGED, self.on_config_path_picked)
         self.startpath = os.getcwd()
+        os.chdir(Path(cwd).parent.absolute())
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -2242,6 +2245,10 @@ class MainFrame(wx.Frame):
     def OnMergeDataset(self, event):
         import deeplabcut as d
         d.merge_datasets(self.configPath.GetPath())
+
+    def onCreateWhiskingModel(self, event):
+        frame = ContactModelGeneration(self.Parent, self.startpath, config=self.configPath.GetPath())
+        frame.Show()
 
     def on_config_path_picked(self, event):
         print('===> on config path picked!! ')
