@@ -234,6 +234,7 @@ class CorrectionsFrame(BaseFrame):
 
 
     def OnKeyPressed(self, event=None):
+        print('==>> keycode: ', event.GetKeyCode())
         if event.GetKeyCode() == wx.WXK_RIGHT:
             self.nextImage(event=None)
         elif event.GetKeyCode() == wx.WXK_LEFT:
@@ -242,6 +243,15 @@ class CorrectionsFrame(BaseFrame):
             self.nextLabel(event=None)
         elif event.GetKeyCode() == wx.WXK_UP:
             self.previousLabel(event=None)
+        elif event.GetKeyCode() == 65:
+            self.action_rdb.SetSelection(0)
+            self.onActionSelection(event=None)
+        elif event.GetKeyCode() == 83:
+            self.action_rdb.SetSelection(1)
+            self.onActionSelection(event=None)
+        elif event.GetKeyCode() == 68:
+            self.action_rdb.SetSelection(2)
+            self.onActionSelection(event=None)
 
     def browseDir(self, event):
         self.statusbar.SetStatusText("Looking for a folder to start corrections...")
@@ -281,6 +291,8 @@ class CorrectionsFrame(BaseFrame):
                     str(fn)
                     for fn in Path(self.selected_dir).rglob("*.png") if fn.parent.name in to_action.keys()
                 ]
+
+        print('imlist: ', imlist)
 
         if len(imlist) == 0:
             print("No images found!!")
