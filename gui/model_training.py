@@ -9,6 +9,9 @@ from deeplabcut.utils import auxiliaryfunctions
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import write_whisking_config
 
+from whisker_touch_pred.touch.touch import Trainer
+import tensorflow as tf
+
 
 class WhiskerModelTraining(BaseFrame):
     def __init__(self, parent, title='Training Whisker Model', config=None):
@@ -34,47 +37,57 @@ class WhiskerModelTraining(BaseFrame):
 
         # reading training config for autofill:
         self.project_path = cfg['project_path']
-        training_config_path = os.path.join(self.project_path, 'dlc-models', self.iterations[self.iteration.GetSelection()],'contact-model', 'contact.yaml')
-        training_cfg = WhiskerModelTraining.read_config(training_config_path)
+        self.training_config_path = os.path.join(self.project_path, 'dlc-models', self.iterations[self.iteration.GetSelection()],'contact-model', 'contact.yaml')
+        self.training_cfg = WhiskerModelTraining.read_config(self.training_config_path)
+
 
         enableEagerLbl = wx.StaticText(self.panel, -1, "Enable Eager")
         self.enableEager = wx.CheckBox(self.panel, -1, "")
-        self.enableEager.SetValue(training_cfg['enable_eager'])
+        self.enableEager.SetValue(self.training_cfg['enable_eager'])
 
 
         enableLastChannelLbl = wx.StaticText(self.panel, -1, "Enable Last Channel")
         self.enableLastChannel = wx.CheckBox(self.panel, -1, "")
-        self.enableLastChannel.SetValue(training_cfg['enable_last_channel'])
+        self.enableLastChannel.SetValue(self.training_cfg['enable_last_channel'])
 
         imageDimWidthLbl = wx.StaticText(self.panel, -1, "Image width input to the network")
-        self.imageDimWidth = wx.TextCtrl(self.panel, -1, str(training_cfg["image_dim_width"]))
+        self.imageDimWidth = wx.TextCtrl(self.panel, -1, str(self.training_cfg["image_dim_width"]))
         self.imageDimWidth.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.imageDimWidth))
 
         imageDimHeightLbl = wx.StaticText(self.panel, -1, "Image height input to the network")
-        self.imageDimHeight = wx.TextCtrl(self.panel, -1, str(training_cfg["image_dim_height"]))
+        self.imageDimHeight = wx.TextCtrl(self.panel, -1, str(self.training_cfg["image_dim_height"]))
         self.imageDimHeight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.imageDimHeight))
 
         batchSizeLbl = wx.StaticText(self.panel, -1, "Batch size")
-        self.batchSize = wx.TextCtrl(self.panel, -1, str(training_cfg["batch_size"]))
+        self.batchSize = wx.TextCtrl(self.panel, -1, str(self.training_cfg["batch_size"]))
         self.batchSize.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.batchSize))
 
         shuffleBufferLbl = wx.StaticText(self.panel, -1, "Size of buffer to make shuffle after each epoch:")
-        self.shuffleBuffer = wx.TextCtrl(self.panel, -1, str(training_cfg["shuffle_buffer"]))
+        self.shuffleBuffer = wx.TextCtrl(self.panel, -1, str(self.training_cfg["shuffle_buffer"]))
         self.shuffleBuffer.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffleBuffer))
 
 
         cacheLbl = wx.StaticText(self.panel, -1, "Enable cache of dataset while reading? ")
         self.cache = wx.CheckBox(self.panel, -1, "")
-        self.cache.SetValue(training_cfg['cache'])
+        self.cache.SetValue(self.training_cfg['cache'])
 
         splitRateLbl = wx.StaticText(self.panel, -1, "Training vs Test split rate")
         self.splitRate = wx.SpinCtrlDouble(self.panel, id=-1, min=0.1, max=0.9,
-                                                          initial=training_cfg['split_rate'], inc=0.05)
+                                                          initial=self.training_cfg['split_rate'], inc=0.05)
 
         # check box to select automatic or manual selection
         initialWeigthsLbl = wx.StaticText(self.panel, -1, "Initial weigths path:", size=wx.Size(self.gui_size[0], 25))
         self.initialWeigths = wx.FilePickerCtrl(self.panel, -1)
-        self.initialWeigths.SetPath(os.path.join(os.path.dirname(training_config_path), training_cfg['init_weights']))
+        self.initialWeigths.SetPath(os.path.join(os.path.dirname(self.training_config_path), self.training_cfg['init_weights']))
+
+        # check box to select automatic or manual selection
+        datapathLbl = wx.StaticText(self.panel, -1, "Dataset path:", size=wx.Size(self.gui_size[0], 25))
+        self.datapath = wx.DirPickerCtrl(self.panel, -1)
+        datapath_initial = os.path.join(self.project_path, 'training-datasets', self.iterations[self.iteration.GetSelection()],'contact-dataset')
+        if len(self.training_cfg['datapath']) == 0  and os.path.exists(datapath_initial):
+            self.datapath.SetPath(datapath_initial)
+            self.training_cfg['datapath'] = datapath_initial
+            write_whisking_config(self.training_config_path, self.training_cfg)
 
         # button to create dataset object in the trainer
         buttonSaveConfig = wx.Button(self.panel, label="Save Configuration")
@@ -104,6 +117,9 @@ class WhiskerModelTraining(BaseFrame):
         # adding stuff to the inputsizer, i.e. buttons checkboxes.. etc.
         inputSizer.Add(iterationLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.iteration, 0, wx.EXPAND, 2)
+
+        inputSizer.Add(datapathLbl, 0, wx.EXPAND, 2)
+        inputSizer.Add(self.datapath, 0, wx.EXPAND, 2)
 
         inputSizer.Add(enableEagerLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.enableEager, 0, wx.EXPAND, 2)
@@ -156,27 +172,47 @@ class WhiskerModelTraining(BaseFrame):
         # import deeplabcut
         # cfg = deeplabcut.auxiliaryfunctions.read_config(self.config)
         config = parse_yaml(self.config)
-        iterations = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models')) if 'iteration' in f]
+        iterations = [f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models')) if 'iteration' in f]
         return iterations
 
     def onSaveConfig(self, event):
         print('saving config dataset: :) ')
-        # from whisking_detection.touch import Trainer
-        # self.model_trainer = Trainer(self.training_cfg['datatapath'],
-        #         enable_eager=self.training_cfg['enable_eager'],
-        #         enable_channel_last=self.training_cfg['enable_channel_last'],
-        #         img_height=self.training_cfg['image_dim_height'],
-        #         img_width=self.training_cfg['image_dim_width'],
-        #         batch_size=self.training_cfg['batch_size'])
-        self.model_trainer = None
+        tf.enable_eager_execution()
+
+        self.model_trainer = Trainer(self.training_cfg['datapath'],
+                enable_eager=self.training_cfg['enable_eager'],
+                enable_channel_last=self.training_cfg['enable_last_channel'],
+                img_height=self.training_cfg['image_dim_height'],
+                img_width=self.training_cfg['image_dim_width'],
+                batch_size=self.training_cfg['batch_size'])
+        is_load_weights = os.path.exists(self.training_cfg['init_weights'])
+        self.model_trainer.create_dataset()
+        self.model_trainer.prepare_for_training(
+                cache=self.training_cfg['cache'],
+                shuffle_buffer_size=self.training_cfg['shuffle_buffer']).\
+            split_training(
+                rate=self.training_cfg['split_rate']).\
+            create_model(
+                self.training_cfg['init_weights'],
+                load_weights=is_load_weights)
+
+
 
 
     def onShowBatch(self, event):
         print('show batch: :) ')
+        if not hasattr(self, 'model_trainer'):
+            return
+
+        self.model_trainer.show_batch()
 
     def onTrainModel(self, event):
         print('train model: :) ')
+        if not hasattr(self, 'model_trainer'):
+            return
 
+        self.model_trainer.train_model()
+        self.model_trainer.score()
 
     @staticmethod
     def read_config(configpath):
@@ -184,6 +220,7 @@ class WhiskerModelTraining(BaseFrame):
             config = parse_yaml(configpath)
         else:
             config = {}
+            config['datapath'] = ''
             config['enable_eager'] = True
             config['enable_last_channel'] = True
             config['image_dim_width'] = 100

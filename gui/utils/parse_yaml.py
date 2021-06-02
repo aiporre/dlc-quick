@@ -14,6 +14,7 @@ def parse_yaml(filepath):
 def create_whisking_config_template():
     yaml_str = """\
         # Dataset parameters
+            datapath:
             enable_eager:
             enable_last_channel:
             image_dim_width:
