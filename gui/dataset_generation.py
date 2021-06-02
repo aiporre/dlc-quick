@@ -5,7 +5,6 @@ from matplotlib.image import imsave
 import os
 from random import sample
 from gui.utils.video_reading import read_video
-from wwutils.video import get_frame
 from tqdm import tqdm
 
 class VideoReaderArray(VideoReader):
