@@ -16,7 +16,6 @@ def create_whisking_config_template():
         # Dataset parameters
             datapath:
             enable_eager:
-            enable_last_channel:
             image_dim_width:
             image_dim_height:
             \n
