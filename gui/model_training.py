@@ -3,7 +3,7 @@ from pathlib import Path
 
 import wx
 
-from deeplabcut.gui.widgets import WidgetPanel, BasePanel, BaseFrame
+from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
 
 from gui.utils import parse_yaml
@@ -46,9 +46,6 @@ class WhiskerModelTraining(BaseFrame):
         self.enableEager.SetValue(self.training_cfg['enable_eager'])
 
 
-        enableLastChannelLbl = wx.StaticText(self.panel, -1, "Enable Last Channel")
-        self.enableLastChannel = wx.CheckBox(self.panel, -1, "")
-        self.enableLastChannel.SetValue(self.training_cfg['enable_last_channel'])
 
         imageDimWidthLbl = wx.StaticText(self.panel, -1, "Image width input to the network")
         self.imageDimWidth = wx.TextCtrl(self.panel, -1, str(self.training_cfg["image_dim_width"]))
@@ -130,9 +127,6 @@ class WhiskerModelTraining(BaseFrame):
         inputSizer.Add(enableEagerLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.enableEager, 0, wx.EXPAND, 2)
 
-        inputSizer.Add(enableLastChannelLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.enableLastChannel, 0, wx.EXPAND, 2)
-
         inputSizer.Add(imageDimHeightLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.imageDimHeight, 0, wx.EXPAND, 2)
 
@@ -190,7 +184,6 @@ class WhiskerModelTraining(BaseFrame):
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
         self.model_trainer = Trainer(self.training_cfg['datapath'],
                 enable_eager=self.training_cfg['enable_eager'],
-                enable_channel_last=self.training_cfg['enable_last_channel'],
                 img_height=self.training_cfg['image_dim_height'],
                 img_width=self.training_cfg['image_dim_width'],
                 batch_size=self.training_cfg['batch_size'],
@@ -230,7 +223,6 @@ class WhiskerModelTraining(BaseFrame):
             config = {}
             config['datapath'] = ''
             config['enable_eager'] = True
-            config['enable_last_channel'] = True
             config['image_dim_width'] = 100
             config['image_dim_height'] = 100
             config['batch_size'] = 32
