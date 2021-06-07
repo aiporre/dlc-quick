@@ -8,6 +8,7 @@ from deeplabcut.utils import auxiliaryfunctions
 
 from gui.corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import ContactDataset
+from gui.model_training import WhiskerModelTraining
 from gui.utils.snapshot_index import get_snapshot_index
 
 
@@ -256,13 +257,8 @@ class ContactModelGeneration(BaseFrame):
         elif frame_type == 'make corrections':
             # frame = FilterPredictions(self.GetParent(), config=self.config)
             frame = CorrectionsFrame(self.GetParent(), self.config, ['*.png'])
-        # elif frame_type == 'train model':
-        #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
-        #         videos = self.targetVideos.GetPath()
-        #     else:  # 'target videos list'
-        #         videos = get_videos(self.videosList)
-        #     print('Videos: ', videos)
-        #     frame = PlotPredictions(self.GetParent(), config=self.config, videos=videos)
+        elif frame_type == 'train model':
+             frame = WhiskerModelTraining(self.GetParent(), config=self.config)
         # elif frame_type == 'label predictions':
         #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
         #         videos = self.targetVideos.GetPath()
