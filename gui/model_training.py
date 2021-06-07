@@ -63,6 +63,9 @@ class WhiskerModelTraining(BaseFrame):
         self.shuffleBuffer = wx.TextCtrl(self.panel, -1, str(self.training_cfg["shuffle_buffer"]))
         self.shuffleBuffer.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffleBuffer))
 
+        epochNumberLbl = wx.StaticText(self.panel, -1, "Number of epochs to train:")
+        self.epochNumber = wx.TextCtrl(self.panel, -1, '10')
+        self.epochNumber.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffleBuffer))
 
         cacheLbl = wx.StaticText(self.panel, -1, "Enable cache of dataset while reading? ")
         self.cache = wx.CheckBox(self.panel, -1, "")
@@ -148,6 +151,9 @@ class WhiskerModelTraining(BaseFrame):
         inputSizer.Add(initialWeigthsLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.initialWeigths, 0, wx.EXPAND, 2)
 
+        inputSizer.Add(epochNumberLbl, 0, wx.EXPAND, 2)
+        inputSizer.Add(self.epochNumber, 0, wx.EXPAND, 2)
+
         # adding buttons
 
         buttonSizer.Add(self.buttonSaveConfig, 0, wx.CENTER | wx.ALL, 15)
@@ -211,7 +217,7 @@ class WhiskerModelTraining(BaseFrame):
         print('train model: :) ')
         if not hasattr(self, 'model_trainer'):
             return
-
+        self.model_trainer.EPOCHS = int(self.epochNumber.GetValue())
         self.model_trainer.train_model()
         self.model_trainer.score()
 
