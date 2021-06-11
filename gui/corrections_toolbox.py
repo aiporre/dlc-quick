@@ -418,16 +418,21 @@ class CorrectionsFrame(BaseFrame):
                 move_image(i, action)
                 self.perform_actions[i] = None
                 self.current_actions[i] = to_action[action]
-
             elif action == 'delete':
-                print('deletering')
+                print('deleting')
                 img_src = self.images[i]
                 os.remove(img_src)
+            else:
+                raise Exception('action is not recognized. possible actions' + str(to_action.keys()))
+
+        # Reseting states: removing element from cache list of actions, current and images
+        # TODO: should also update the view, imshow new current image!
+        perform_actions_copy = self.perform_actions.copy()
+        for i, action in enumerate(perform_actions_copy):
+            if action == "delete":
                 self.images.pop(i)
                 self.perform_actions.pop(i)
                 self.current_actions.pop(i)
-            else:
-                raise Exception('action is not reconized. possible actions' + str(to_action.keys()))
 
         print(self.perform_actions[:10])
         print(self.current_actions[:10])
