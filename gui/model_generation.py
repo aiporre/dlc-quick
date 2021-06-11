@@ -20,6 +20,7 @@ def get_videos(videosList):
         videos.append(item.GetText())
     return videos
 
+
 class ContactModelGeneration(BaseFrame):
     def __init__(self, parent, CWD, title='Contact Model Generation', config=None):
         super(ContactModelGeneration, self).__init__(parent=parent, frame_title=title)
@@ -39,7 +40,7 @@ class ContactModelGeneration(BaseFrame):
         config_dlc = auxiliaryfunctions.read_config(self.config)
         self.targetVideos = wx.DirPickerCtrl(self.panel, -1)
         self.project_path = config_dlc['project_path']
-        self.targetVideos.SetPath(os.path.join(self.project_path,'videos'))
+        self.targetVideos.SetPath(os.path.join(self.project_path, 'videos'))
         os.chdir(self.project_path)
 
         # 2. which input?
@@ -65,7 +66,6 @@ class ContactModelGeneration(BaseFrame):
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'])  # +get_available_gpus()
 
-
         # 6. list of videos to be processed.
         self.listIndex = 0
         videosListLbl = wx.StaticText(self.panel, -1, "Target videos list:")
@@ -77,7 +77,8 @@ class ContactModelGeneration(BaseFrame):
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dataset Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
-        self.destfolder.SetPath(os.path.join(self.project_path,'training-datasets','iteration-'+ str(config_dlc['iteration'])))
+        self.destfolder.SetPath(
+            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration'])))
 
         # # Button components..
 
@@ -147,7 +148,6 @@ class ContactModelGeneration(BaseFrame):
         buttonSizer.Add(correctionsButton, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(trainButton, 0, wx.EXPAND | wx.ALL, 5)
 
-
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         contentSizer.Add(buttonSizer, 0, wx.ALL, 10)
@@ -179,6 +179,7 @@ class ContactModelGeneration(BaseFrame):
                 event.Skip()
         if keycode == 314 or keycode == 316:
             event.Skip()
+
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", self.project_path,
                                style=wx.FD_DEFAULT_STYLE | wx.FD_FILE_MUST_EXIST)  # wx.FD_FILE_MUST_EXIST
@@ -212,7 +213,8 @@ class ContactModelGeneration(BaseFrame):
         print('Generate dataset....')
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
             targetVideosPath = self.targetVideos.GetPath()
-            videos = [os.path.join(targetVideosPath,v_path)  for v_path in os.listdir(targetVideosPath) if v_path.endswith(self.videoType.GetValue())]
+            videos = [os.path.join(targetVideosPath, v_path) for v_path in os.listdir(targetVideosPath) if
+                      v_path.endswith(self.videoType.GetValue())]
         else:  # 'target videos list'
             videos = get_videos(self.videosList)
         print('Videos: ', videos)
@@ -232,7 +234,8 @@ class ContactModelGeneration(BaseFrame):
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
                 snapshot_index = get_snapshot_index(self.config, self.shuffle.GetValue()).split("-")[1]
-                if f_name.startswith(v_name) and f_name.endswith('shuffle'+str(self.shuffle.GetValue()) + '_' + str(snapshot_index) + ".csv"):
+                if f_name.startswith(v_name) and f_name.endswith(
+                        'shuffle' + str(self.shuffle.GetValue()) + '_' + str(snapshot_index) + ".csv"):
                     labels_path = os.path.join(video_dir_path, f)
                     break
             # labels_path coulnd be found then stop generation.
@@ -246,8 +249,8 @@ class ContactModelGeneration(BaseFrame):
         # if pairs generated then run generation fo files for each pair
         for v_path, l_path in pairs:
             print(f'video path = {v_path} label path =  {l_path}')
-            ContactDataset(labels_path=l_path, video_path=v_path, dest_path=self.destfolder.GetPath()).generate_dataset()
-
+            ContactDataset(labels_path=l_path, video_path=v_path,
+                           dest_path=self.destfolder.GetPath()).generate_dataset()
 
     def on_new_frame(self, event, frame_type):
         print('open new window: ', frame_type)
@@ -258,23 +261,7 @@ class ContactModelGeneration(BaseFrame):
             # frame = FilterPredictions(self.GetParent(), config=self.config)
             frame = CorrectionsFrame(self.GetParent(), self.config, ['*.png'])
         elif frame_type == 'train model':
-             frame = WhiskerModelTraining(self.GetParent(), config=self.config)
-        # elif frame_type == 'label predictions':
-        #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
-        #         videos = self.targetVideos.GetPath()
-        #     else:  # 'target videos list'
-        #         videos = get_videos(self.videosList)
-        #     print('Videos: ', videos)
-        #     destfolder = None if len(self.destfolder.GetPath()) == 0 else self.destfolder.GetPath()
-        #     frame = LabelPredictions(self.GetParent(), config=self.config, videos=videos, destfolder=destfolder)
-        # elif frame_type == 'extract outliers':
-        #     count = self.videosList.GetItemCount()
-        #     if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
-        #         videos = [str(self.targetVideos.GetPath())]
-        #     else:  # 'target videos list'
-        #         videos = get_videos(self.videosList)
-        #     print('Videos: ', videos, type(videos), type(videos[0]))
-        #     frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos)
+            frame = WhiskerModelTraining(self.GetParent(), config=self.config)
         else:
             return
         frame.Show()
@@ -286,7 +273,6 @@ def show(config, startpath='.'):
     app.MainLoop()
 
 
-
 if __name__ == '__main__':
     config = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/config.yaml'
     startpath = os.getcwd()
@@ -294,11 +280,3 @@ if __name__ == '__main__':
     os.chdir(str(wd))
     cfg = auxiliaryfunctions.read_config(config)
     show(config, startpath)
-
-
-
-
-
-
-
-

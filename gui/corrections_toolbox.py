@@ -255,7 +255,7 @@ class CorrectionsFrame(BaseFrame):
 
     def browseDir(self, event):
         self.statusbar.SetStatusText("Looking for a folder to start corrections...")
-        cwd = os.path.join(os.getcwd(), "labeled-data")
+        cwd = os.path.join(os.getcwd(), "training-datasets")
         dlg = wx.DirDialog(
             self,
             "Choose the directory where your extracted frames are saved:",
