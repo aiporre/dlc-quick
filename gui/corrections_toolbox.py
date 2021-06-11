@@ -1,38 +1,24 @@
 
-import argparse
-import glob
 import os
 import os.path
 from pathlib import Path
-from matplotlib.path import Path as plot_path
 
 import cv2
-import re
 import matplotlib.colors as mcolors
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import tables
 import shutil
-from functools import reduce
 import wx
 import wx.lib.scrolledpanel as SP
 from matplotlib.backends.backend_wxagg import (
     NavigationToolbar2WxAgg as NavigationToolbar,
 )
-from matplotlib.widgets import LassoSelector
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # from gui.widgets import BasePanel, WidgetPanel, BaseFrame
 from deeplabcut.gui.widgets import WidgetPanel, BasePanel, BaseFrame
 
-from gui import auxfun_drag
 
 from deeplabcut.utils import auxiliaryfunctions, auxiliaryfunctions_3d
-from gui.utils import parse_yaml
-from gui.utils.interpolation import uniform_interpolation
-from gui.draggable_curve import DraggableCurve
 
 to_action = {'positive_frames': 0, 'negative_frames': 1, 'delete': 2}
 from_action = {0: 'positive_frames', 1: 'negative_frames', 2: 'delete'}
@@ -131,6 +117,7 @@ class CorrectionsFrame(BaseFrame):
         self.choice_panel = ScrollPanel(vSplitter)
         self.action_box, self.action_rdb = self.choice_panel.add_radio_buttons()
         self.action_rdb.Bind(wx.EVT_RADIOBUTTON, self.onActionSelection)
+        self.action_rdb.Enable(False)
 
 
         vSplitter.SplitVertically(
@@ -337,7 +324,9 @@ class CorrectionsFrame(BaseFrame):
             self.img, img_name, self.iter, len(self.images))
         self.figure.canvas.draw()
 
+        self.action_rdb.Enable(True)
         self.action_rdb.SetSelection(self.current_actions[0])
+
 
 
 
@@ -410,7 +399,7 @@ class CorrectionsFrame(BaseFrame):
             shutil.move(src_image, dst_image)
             self.images[iteration] = dst_image
 
-        for i, action in enumerate(self.perform_actions):
+        for i, action in reversed(list(enumerate(self.perform_actions))):
             if action is None:
                 continue
             elif action in ['negative_frames', 'positive_frames']:
@@ -422,20 +411,31 @@ class CorrectionsFrame(BaseFrame):
                 print('deleting')
                 img_src = self.images[i]
                 os.remove(img_src)
-            else:
-                raise Exception('action is not recognized. possible actions' + str(to_action.keys()))
-
-        # Reseting states: removing element from cache list of actions, current and images
-        # TODO: should also update the view, imshow new current image!
-        perform_actions_copy = self.perform_actions.copy()
-        for i, action in enumerate(perform_actions_copy):
-            if action == "delete":
                 self.images.pop(i)
                 self.perform_actions.pop(i)
                 self.current_actions.pop(i)
+            else:
+                raise Exception('action is not recognized. possible actions' + str(to_action.keys()))
+
+
+        # reseting view:
+        self.iter = 0
+        self.img = str(self.images[self.iter])
+        img_name = Path(self.img).name
+        self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.img,
+                                                                                      img_name,
+                                                                                      self.iter,
+                                                                                      len(self.images),
+                                                                                      keep_view=self.view_locked)
+        self.action_rdb.SetSelection(self.current_actions[0])
+        self.figure.canvas.draw()
+
+
 
         print(self.perform_actions[:10])
         print(self.current_actions[:10])
+
+
 
 
     def quitButton(self, event):
