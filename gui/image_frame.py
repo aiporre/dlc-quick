@@ -1,11 +1,7 @@
 import os
 from pathlib import Path
 import wx
-
-
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-
-import matplotlib.pyplot as plt
 from deeplabcut.gui.widgets import BaseFrame, BasePanel
 from deeplabcut.utils import auxiliaryfunctions
 from matplotlib.figure import Figure
@@ -13,7 +9,6 @@ from matplotlib.figure import Figure
 
 class ImagePanel(wx.Panel):
     def __init__(self, parent, config, gui_size, title='', **kwargs):
-
         h = gui_size[0]
         w = gui_size[1]
         super(ImagePanel, self).__init__(parent, -1, style=wx.SUNKEN_BORDER, size=(h, w))
@@ -29,6 +24,7 @@ class ImagePanel(wx.Panel):
         self.Fit()
         self.config = config
         self.title = ''
+
     def getfigure(self):
         """
         Returns the figure, axes and canvas
@@ -57,7 +53,6 @@ def show(config, startpath='.'):
     axes.plot(x, y)
     canvas.draw()
     app.MainLoop()
-
 
 
 if __name__ == '__main__':
