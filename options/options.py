@@ -84,7 +84,7 @@ class CommandBox:
             filtered_indices = list(range(len(options_text)))
         elif end is None:
             # meaning that is only looking for begin inside the text
-            for i, text in options_text:
+            for i, text in enumerate(options_text):
                 if begin in text:
                     filtered_indices.append(i)
         else:
