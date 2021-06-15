@@ -168,6 +168,35 @@ class OptionsPad(Pad):
             super().move_up()
         self.refresh()
 
+    def range_select(self, begin_text, end_text):
+
+        range_select = [None, None]
+        for i, o in enumerate(self.options):
+            if begin_text in o.text and range_select[0] is None:
+                range_select[0] = i
+            if end_text in o.text and range_select[0] is not None:
+                range_select[1] = max(i, range_select[1]) if range_select[1] is not None else i
+
+        if range_select[0] is not None and range_select[1] is not None:
+            for o in self.options[range_select[0]:range_select[1]]:
+                if not o.selected:
+                    o.toogle_selection()
+            print_options(self.options)
+            self.refresh()
+
+    def filter_options(self):
+        pass
+
+    def reset_selections(self):
+        for o in self.options:
+            if o.selected:
+                o.toogle_selection()
+        print_options(self.options)
+        self.refresh()
+
+    def save_selections(self):
+        pass
+
 class OptionInterface:
     def __init__(self, options_text, options_status):
         self.options_text = options_text
