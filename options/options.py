@@ -95,7 +95,10 @@ class CommandBox:
                     range_select[0] = i
                 if end in text and range_select[0] is not None:
                     range_select[1] = max(i, range_select[1]) if range_select[1] is not None else i
-            filtered_indices = list(range(range_select[0], range_select[1]+1))
+            if range_select[0] is not None and range_select[1] is not None:
+                filtered_indices = list(range(range_select[0], range_select[1]+1))
+            else:
+                filtered_indices = list(range(len(options_text)))
         return filtered_indices
 
 
