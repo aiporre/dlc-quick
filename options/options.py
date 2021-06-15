@@ -7,8 +7,7 @@ class CommandBox:
         'R/': 'Select range',
         'S/': 'Search options',
         'r/': 'Resets to orignal selection',
-        'x/': 'Exit and saves options',
-        'q/': 'Exit without saving'}
+        'x/': 'Exit and saves options'}
 
     def __init__(self, screen, height, width):
         self.screen = screen
@@ -28,7 +27,7 @@ class CommandBox:
             if command.count('/') != 1 and command.count('/') != 2:
                 return f'Invalid command \'Search options\'. Use one or two \'/\' separators. ERR: {command}'
 
-        if command[:2] in ['r/', 'x/', 'q/']:
+        if command[:2] in ['r/', 'x/']:
             if len(command) != 2:
                 return 'Invalid command. Only allowed input is Select range (R/) and Search options (S/)'
 
@@ -46,16 +45,15 @@ class CommandBox:
         command_text = text.strip()[1:]
         error = self._validate_command_input(command_text)
         action = None
-        exit = False
-        filter_options = False
+        action_name = ''
         if error is None:
             last_command_text = '++/ ' + command_text
             # parsing command into action fcn:
             if command_text.startswith('R/'):
                 tokens = command_text.split('/')
-
                 begin, end = tokens[1], tokens[2]
                 action = lambda option_pad: option_pad.range_select(begin, end)
+                action_name = 'range select'
             elif command_text.startswith('S/'):
                 tokens = command_text.split('/')
                 if len(tokens) == 2 and len(tokens[1]) == 0:
@@ -65,17 +63,18 @@ class CommandBox:
                 else:
                     begin, end = tokens[1], tokens[2]
                 action = lambda options_text: self.filter_options(options_text,begin, end)
-                filter_options = True
+                action_name = 'filter options'
             elif command_text.startswith('r/'):
                 action = lambda option_pad: option_pad.reset_selections()
+                action_name = 'reset selections'
             elif command_text.startswith('x/'):
                 action = lambda option_pad: option_pad.save_selections()
-                exit = True
+                action_name = 'exit'
         else:
             last_command_text = "--/ Invalid command: " + error
 
         self.screen.addstr(self.height - 1, 0, last_command_text[:self.width])
-        return action, exit, filter_options
+        return action, action_name
 
     @staticmethod
     def filter_options(options_text, begin, end):
@@ -266,17 +265,22 @@ class OptionInterface:
                 elif c == ord('A') or c == ord('a'):
                     options_pad.move_up()
                 elif c == ord(':'):
-                    action, exit, filter_options = command_box.accept_command()
-                    if filter_options:
+                    action, action_name = command_box.accept_command()
+                    end_loop = False
+                    if action_name == 'filter options':
                         filtered = action(self.options_text)
                         filtered_options = [self.options_text[i] for i in filtered]
                         filtered_status = [self.options_status[i] for i in filtered]
                         options_pad.clear()
                         options_pad = OptionsPad(screen, filtered_options, filtered_status, shift_y=0, shift_x=0, sheight=height-1, swidth=width)
                         options_pad.show()
-                    elif action is not None:
+                    elif action_name == 'exit':
+                        end_loop = True
+                    elif action_name in ['range select', 'reset selections']:
                         action(options_pad)
-                    if exit:
+                        for i, f in enumerate(filtered):
+                            self.options_status[f] = options_pad.options[i].status
+                    if end_loop:
                         curses.napms(3000)
                         break
                 elif c == 32:
@@ -303,5 +307,8 @@ if __name__ == '__main__':
     example_options = [f' OPTION {i}' for i in range(10)]
     example_options_status = [0]*len(example_options)
     example_options_status[1] = 2
+    opt_interface = OptionInterface(example_options, example_options_status)
+    opt_interface.launch()
 
-    OptionInterface(example_options, example_options_status).launch()
+    for o, s in zip(opt_interface.options_text, opt_interface.options_status):
+        print(f'OPTION ({o}) => {s}')
