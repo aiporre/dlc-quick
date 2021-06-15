@@ -21,9 +21,13 @@ class CommandBox:
             _cc = ''.join([f'\'{c}\' ' for c in self.COMMANDS_CODES.keys()])
             return 'Invalid command. Available Commands ' + _cc[:-2] + '.'
 
-        if command.startswith('R/') or command.startswith('S/'):
+        if command.startswith('R/'):
             if command.count('/') != 2:
-                return f'Invalid command \'{self.COMMANDS_CODES[command[:2]]}\'. Use only two \'/\' separators. ERR: {command}'
+                return f'Invalid command \'Select range\'. Use two \'/\' separators. ERR: {command}'
+
+        if command.startswith('S/'):
+            if command.count('/') != 1 and command.count('/') != 2:
+                return f'Invalid command \'Search options\'. Use one or two \'/\' separators. ERR: {command}'
 
         if command[:2] in ['r/', 'x/', 'q/']:
             if len(command) != 2:
@@ -44,19 +48,27 @@ class CommandBox:
         error = self._validate_command_input(command_text)
         action = None
         exit = False
+        filter_options = False
         if error is None:
             last_command_text = '++/ ' + command_text
             # parsing command into action fcn:
             if command_text.startswith('R/'):
                 tokens = command_text.split('/')
+
                 begin, end = tokens[1], tokens[2]
                 action = lambda option_pad: option_pad.range_select(begin, end)
             elif command_text.startswith('S/'):
                 tokens = command_text.split('/')
-                begin, end = tokens[1], tokens[2]
-                action = lambda option_pad: option_pad.filter_options(begin, end)
+                if len(tokens) == 2 and len(tokens[1]) == 0:
+                    begin, end = None, None
+                elif len(tokens) == 2 and len(tokens[1]) > 0:
+                    begin, end = tokens[1], None
+                else:
+                    begin, end = tokens[1], tokens[2]
+                action = lambda options_text: self.filter_options(options_text,begin, end)
+                filter_options = True
             elif command_text.startswith('r/'):
-                action = lambda option_pad: option_pad.reset_selections(begin, end)
+                action = lambda option_pad: option_pad.reset_selections()
             elif command_text.startswith('x/'):
                 action = lambda option_pad: option_pad.save_selections()
                 exit = True
@@ -64,7 +76,29 @@ class CommandBox:
             last_command_text = "--/ Invalid command: " + error
 
         self.screen.addstr(self.height - 1, 0, last_command_text[:self.width])
-        return action, exit
+        return action, exit, filter_options
+
+    @staticmethod
+    def filter_options(options_text, begin, end):
+        # Finds filtered indices
+        filtered_indices = []
+        if begin is None:
+            filtered_indices = list(range(len(options_text)))
+        elif end is None:
+            # meaning that is only looking for begin inside the text
+            for i, text in options_text:
+                if begin in text:
+                    filtered_indices.append(i)
+        else:
+            # ranges search in between first "begin" in text and last "end" in text
+            range_select = [None, None]
+            for i, text in enumerate(options_text):
+                if begin in text and range_select[0] is None:
+                    range_select[0] = i
+                if end in text and range_select[0] is not None:
+                    range_select[1] = max(i, range_select[1]) if range_select[1] is not None else i
+            filtered_indices = list(range(range_select[0], range_select[1]+1))
+        return filtered_indices
 
 
 class Option:
@@ -145,8 +179,7 @@ class OptionsPad(Pad):
     def __init__(self, screen, options_text, options_status, shift_y, shift_x, sheight, swidth):
         super().__init__(screen, pheight=len(options_text), shift_y=shift_y, shift_x=shift_x, sheight=sheight, swidth=swidth)
         self.options_text = options_text
-        self.options_status = options_status
-        self.options = [Option(self.pad, option, i, status=status) for i, (option,status) in enumerate(zip(self.options_text, self.options_status))]
+        self.options = [Option(self.pad, option, i, status=status) for i, (option,status) in enumerate(zip(self.options_text, options_status))]
         self.cursor_text = "➤➤"
         self.cursor_position = 0
 
@@ -186,14 +219,12 @@ class OptionsPad(Pad):
                 range_select[1] = max(i, range_select[1]) if range_select[1] is not None else i
 
         if range_select[0] is not None and range_select[1] is not None:
-            for o in self.options[range_select[0]:range_select[1]]:
+            for o in self.options[range_select[0]:range_select[1]+1]:
                 if not o.selected:
                     o.toogle_selection()
             print_options(self.options)
             self.refresh()
 
-    def filter_options(self):
-        pass
 
     def reset_selections(self):
         for o in self.options:
@@ -205,6 +236,10 @@ class OptionsPad(Pad):
     def save_selections(self):
         pass
 
+    def clear(self):
+        self.pad.clear()
+        self.refresh()
+
 class OptionInterface:
     def __init__(self, options_text, options_status):
         self.options_text = options_text
@@ -214,12 +249,13 @@ class OptionInterface:
         curses.curs_set(0)
         if curses.has_colors() and curses.can_change_color():
             curses.start_color()
-            curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_GREEN)
+            curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_GREEN)
             curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_WHITE)
             curses.init_pair(3, curses.COLOR_RED, curses.COLOR_GREEN)
         height, width = screen.getmaxyx()
         options_pad = OptionsPad(screen, self.options_text, self.options_status, shift_y=0, shift_x=0, sheight=height-1, swidth=width)
         command_box = CommandBox(screen, height, width)
+        filtered = list(range(len(self.options_text)))
         screen.refresh()
 
         try:
@@ -231,14 +267,24 @@ class OptionInterface:
                 elif c == ord('A') or c == ord('a'):
                     options_pad.move_up()
                 elif c == ord(':'):
-                    action, exit = command_box.accept_command()
-                    if action is not None:
+                    action, exit, filter_options = command_box.accept_command()
+                    if filter_options:
+                        filtered = action(self.options_text)
+                        filtered_options = [self.options_text[i] for i in filtered]
+                        filtered_status = [self.options_status[i] for i in filtered]
+                        options_pad.clear()
+                        options_pad = OptionsPad(screen, filtered_options, filtered_status, shift_y=0, shift_x=0, sheight=height-1, swidth=width)
+                        options_pad.show()
+                    elif action is not None:
                         action(options_pad)
                     if exit:
                         curses.napms(3000)
                         break
                 elif c == 32:
                     options_pad.toogle_selection()
+                    #TODO: Poor desing if we need to update data in two places.
+                    for i, f in enumerate(filtered):
+                        self.options_status[f] = options_pad.options[i].status
                 screen.refresh()
 
         except Exception as e:
