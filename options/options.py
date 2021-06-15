@@ -1,6 +1,5 @@
 import curses
 import curses.textpad
-import random
 
 
 class CommandBox:
