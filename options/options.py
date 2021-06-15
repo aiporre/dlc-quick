@@ -1,6 +1,62 @@
 import curses
+import curses.textpad
 import random
 
+
+class CommandBox:
+    COMMANDS_CODES = {
+        'R/': 'Select range',
+        'S/': 'Search options',
+        'r/': 'Resets to orignal selection',
+        'x/': 'Exit and saves options',
+        'q/': 'Exit without saving'}
+
+    def __init__(self, screen, height, width):
+        self.screen = screen
+        self.height = height
+        self.width = width
+
+    def _validate_command_input(self, command: str):
+        if not command[:2] in self.COMMANDS_CODES.keys():
+            _cc = ''.join([f'\'{c}\' ' for c in self.COMMANDS_CODES.keys()])
+            return 'Invalid command. Available Commands ' + _cc[:-2] + '.'
+
+    def _maketextbox(self, h, w, y, x, value="", textColorpair=0):
+        window = curses.newwin(h, w, y, x)
+        txtbox = curses.textpad.Textbox(window)
+        window.addstr(0, 0, value)
+        window.attron(textColorpair)
+        window.refresh()
+        return txtbox
+
+    def accept_command(self):
+        command_textbox = self._maketextbox(1, self.width, self.height - 1, 0, ":")
+        text = command_textbox.edit()
+        command_text = text.strip()[1:]
+        error = self._validate_command_input(command_text)
+        action = None
+        exit = False
+        if error is None:
+            last_command_text = '++/ ' + command_text
+            # parsing command into action fcn:
+            if command_text.startswith('R/'):
+                tokens = command_text.split('/')
+                begin, end = tokens[1], tokens[2]
+                action = lambda option_pad: option_pad.range_select(begin, end)
+            elif command_text.startswith('S/'):
+                tokens = command_text.split('/')
+                begin, end = tokens[1], tokens[2]
+                action = lambda option_pad: option_pad.filter_options(begin, end)
+            elif command_text.startswith('r/'):
+                action = lambda option_pad: option_pad.reset_selections(begin, end)
+            elif command_text.startswith('x/'):
+                action = lambda option_pad: option_pad.save_selections()
+                exit = True
+        else:
+            last_command_text = "--/ Invalid command: " + error
+
+        self.screen.addstr(self.height - 1, 0, last_command_text[:self.width])
+        return action, exit
 
 
 class Option:
@@ -8,10 +64,10 @@ class Option:
     Class Option
 
     it has 4 status indicated by the integer between 0 and 3:
-        1 = not processed
-        2 = processed
-        3 = will be processed
-        4 = will be re-processed
+        0 = not processed
+        1 = processed
+        2 = will be processed
+        3 = will be re-processed
     '''
 
     def __init__(self, screen, text, row, status=0):
@@ -78,10 +134,11 @@ class Pad:
 
 
 class OptionsPad(Pad):
-    def __init__(self, screen, options_text, shift_y, shift_x, sheight, swidth):
+    def __init__(self, screen, options_text, options_status, shift_y, shift_x, sheight, swidth):
         super().__init__(screen, pheight=len(options_text), shift_y=shift_y, shift_x=shift_x, sheight=sheight, swidth=swidth)
         self.options_text = options_text
-        self.options = [Option(self.pad, option, i) for i, option in enumerate(self.options_text)]
+        self.options_status = options_status
+        self.options = [Option(self.pad, option, i, status=status) for i, (option,status) in enumerate(zip(self.options_text, self.options_status))]
         self.cursor_text = "➤➤"
         self.cursor_position = 0
 
@@ -112,8 +169,9 @@ class OptionsPad(Pad):
         self.refresh()
 
 class OptionInterface:
-    def __init__(self, options_text: str):
+    def __init__(self, options_text, options_status):
         self.options_text = options_text
+        self.options_status = options_status
 
     def __loop(self, screen):
         curses.curs_set(0)
@@ -123,7 +181,8 @@ class OptionInterface:
             curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_WHITE)
             curses.init_pair(3, curses.COLOR_RED, curses.COLOR_GREEN)
         height, width = screen.getmaxyx()
-        options_pad = OptionsPad(screen, self.options_text, shift_y=0, shift_x=0, sheight=height, swidth=width)
+        options_pad = OptionsPad(screen, self.options_text, self.options_status, shift_y=0, shift_x=0, sheight=height-1, swidth=width)
+        command_box = CommandBox(screen, height, width)
         screen.refresh()
 
         try:
@@ -134,6 +193,12 @@ class OptionInterface:
                     options_pad.move_down()
                 elif c == ord('A') or c == ord('a'):
                     options_pad.move_up()
+                elif c == ord(':'):
+                    action, exit = command_box.accept_command()
+                    action(options_pad)
+                    if exit:
+                        curses.napms(3000)
+                        break
                 elif c == 32:
                     options_pad.toogle_selection()
                 screen.refresh()
@@ -153,6 +218,7 @@ class OptionInterface:
 
 if __name__ == '__main__':
     example_options = [f' OPTION {i}' for i in range(10)]
+    example_options_status = [0]*len(example_options)
+    example_options_status[1] = 2
 
-
-    OptionInterface(example_options).launch()
+    OptionInterface(example_options, example_options_status).launch()
