@@ -21,6 +21,14 @@ class CommandBox:
             _cc = ''.join([f'\'{c}\' ' for c in self.COMMANDS_CODES.keys()])
             return 'Invalid command. Available Commands ' + _cc[:-2] + '.'
 
+        if command.startswith('R/') or command.startswith('S/'):
+            if command.count('/') != 2:
+                return f'Invalid command \'{self.COMMANDS_CODES[command[:2]]}\'. Use only two \'/\' separators. ERR: {command}'
+
+        if command[:2] in ['r/', 'x/', 'q/']:
+            if len(command) != 2:
+                return 'Invalid command. Only allowed input is Select range (R/) and Search options (S/)'
+
     def _maketextbox(self, h, w, y, x, value="", textColorpair=0):
         window = curses.newwin(h, w, y, x)
         txtbox = curses.textpad.Textbox(window)
@@ -224,7 +232,8 @@ class OptionInterface:
                     options_pad.move_up()
                 elif c == ord(':'):
                     action, exit = command_box.accept_command()
-                    action(options_pad)
+                    if action is not None:
+                        action(options_pad)
                     if exit:
                         curses.napms(3000)
                         break
