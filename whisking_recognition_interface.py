@@ -65,19 +65,29 @@ def main():
    
     # 1. which animal?
     animals = ask_which(animals)
+    if len(animals) == 0:
+        return
 
     # 1. which animal?
     dates = ask_which(dates)
+    if len(dates) == 0:
+        return
 
     # 1. which animal?
     codes = ask_which(codes)
+    if len(codes) == 0:
+        return
 
     # 1. which animal?
     sessions = ask_which(sessions)
+    if len(sessions) == 0:
+        return
 
     # 1. which animal?
     cameras = [os.path.join('videos','hispeed1'), os.path.join('videos','hispeed2')]
     cameras = ask_which(cameras)
+    if len(cameras) == 0:
+        return
 
     # print more stuff
     print('NEW ANIMALS')
