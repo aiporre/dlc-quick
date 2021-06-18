@@ -108,7 +108,7 @@ def main():
             for c in codes:
                 for s in sessions:
                     for cam in cameras:
-                        pp = os.path.join(a, d, c, s, cam)
+                        pp = os.path.join(a, d, c+ "_" + s, cam)
                         if os.path.exists(pp):
                             all_options.append(pp)
     all_options = ask_which(all_options)
