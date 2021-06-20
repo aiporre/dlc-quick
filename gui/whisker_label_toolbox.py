@@ -359,16 +359,20 @@ class ScrollPanel(SP.ScrolledPanel):
                 self.whiskerpartsradiobox.SetSelection(self.whiskerpartsradiobox.GetSelection() -1)
             else:
                 if self.whiskerradiobox.GetSelection() != 0:
-                    self.whiskerpartsradiobox.SetSelection(self.whiskers_lenghts[self.whisker_names[self.whiskerradiobox.GetSelection()]])
+                    # change whisker name radio box backward
                     self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() - 1)
+                    # also move part chech box to the end on
+                    self.whiskerpartsradiobox.SetSelection(self.whiskers_lenghts[self.whisker_names[self.whiskerradiobox.GetSelection()]]-1)
                     self.changeFieldsVisible(None)
         else:
             if self.whiskerpartsradiobox.GetSelection() + 1 <  self.num_whiskers_parts:
                 self.whiskerpartsradiobox.SetSelection(self.whiskerpartsradiobox.GetSelection() + 1)
             else:
                 if self.whiskerradiobox.GetSelection() + 1 < self.num_whiskers:
-                    self.whiskerpartsradiobox.SetSelection(0)
+                    # change whisker name radio box forward
                     self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() + 1)
+                    # also move whisker part radio box to the begining
+                    self.whiskerpartsradiobox.SetSelection(0)
                     self.changeFieldsVisible(None)
 
 
