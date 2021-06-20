@@ -302,6 +302,7 @@ class ScrollPanel(SP.ScrolledPanel):
             choices=self.whisker_names,
         )
         self.whiskerradiobox.Bind(wx.EVT_RADIOBOX, self.changeFieldsVisible)
+        # self.changeFieldsVisible()
 
         self.slider = wx.Slider(
             self,
@@ -345,7 +346,12 @@ class ScrollPanel(SP.ScrolledPanel):
     def changeFieldsVisible(self, event):
         # makes visible labeling parts from 0 to the number whisker points. As number of options is max(number of point in for all bodynames)
         for i in range(len(self.whiskerparts)):
-            self.whiskerpartsradiobox.ShowItem(i, i < self.num_whiskers_parts)
+            self.whiskerpartsradiobox.EnableItem(i, i < self.num_whiskers_parts)
+
+    # def callChangeField(self):
+    #     event = wx.PyCommandEvent(wx.EVT_RADIOBOX.typeId, self.GetId())
+    #     # wx.PostEvent(self.GetEventHandler(), self.GetId())
+    #     self.whiskerpartsradiobox.GetEventHandler().ProcessEvent(event)
 
     def shift_selections(self, backwards=False):
         if backwards:
@@ -355,6 +361,7 @@ class ScrollPanel(SP.ScrolledPanel):
                 if self.whiskerradiobox.GetSelection() != 0:
                     self.whiskerpartsradiobox.SetSelection(self.whiskers_lenghts[self.whisker_names[self.whiskerradiobox.GetSelection()]])
                     self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() - 1)
+                    self.changeFieldsVisible(None)
         else:
             if self.whiskerpartsradiobox.GetSelection() + 1 <  self.num_whiskers_parts:
                 self.whiskerpartsradiobox.SetSelection(self.whiskerpartsradiobox.GetSelection() + 1)
@@ -362,6 +369,8 @@ class ScrollPanel(SP.ScrolledPanel):
                 if self.whiskerradiobox.GetSelection() + 1 < self.num_whiskers:
                     self.whiskerpartsradiobox.SetSelection(0)
                     self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() + 1)
+                    self.changeFieldsVisible(None)
+
 
 
 
@@ -499,17 +508,17 @@ class LabelWhiskersFrame(BaseFrame):
         # single clicks are filtered
         if len(verts)>2:
             # Calculate how many whisker parts are possible to label
-            N = self.num_whiskers-self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
+            maybe_n_parts_to_label = self.choice_panel.num_whiskers_parts - self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
 
             # calculate which labels are going to be generated, as we just want to label the given whisker
             # only missing labels are generated for that whisker
-            label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
-            print('###> label indes = ', label_index)
-            print('===> BUTTON COUNTER: ', self.buttonCounter)
+            label_index = self.choice_panel.label_index
             if self.labelingDirection.GetSelection() == 1:
-                whisker_part_indices = [x+self.rdb.GetSelection() for x in range(N) if x+label_index not in self.buttonCounter]
+                # from x to tip
+                whisker_part_indices = [x + self.rdb.GetSelection() for x in range(maybe_n_parts_to_label) if x + label_index not in self.buttonCounter]
             else:
-                whisker_part_indices = [self.rdb.GetSelection()-x for x in range(N,-1,-1) if label_index-x not in self.buttonCounter]
+                # from x to base
+                whisker_part_indices = [self.rdb.GetSelection() - x for x in range(maybe_n_parts_to_label, -1, -1) if label_index - x not in self.buttonCounter]
 
 
             print('whisker part indices: ', whisker_part_indices)
@@ -940,9 +949,7 @@ class LabelWhiskersFrame(BaseFrame):
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
-            # self.num_whiskers = self.choice_panel.num_whiskers_points
-            # self.whiskers = self.choice_panel.whisker_names
-            # self.whiskerparts = self.choice_panel.whiskerparts
+            self.choice_panel.changeFieldsVisible(None)
 
             self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
@@ -992,9 +999,8 @@ class LabelWhiskersFrame(BaseFrame):
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
-            # self.num_whiskers = self.choice_panel.num_whiskers_points
-            # self.whiskers = list(self.choice_panel.whiskers_lenghts.keys())
-            # self.whiskerparts = self.choice_panel.whiskerparts
+            self.choice_panel.changeFieldsVisible(None)
+
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
             self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
@@ -1040,6 +1046,8 @@ class LabelWhiskersFrame(BaseFrame):
             "Working on folder: {}".format(os.path.split(str(self.dir))[-1])
         )
         self.rdb.SetSelection(0)
+        self.wrdb.SetSelection(0)
+        self.choice_panel.changeFieldsVisible(None)
         self.file = 1
         # Refreshing the button counter
         self.buttonCounter = []
@@ -1097,6 +1105,8 @@ class LabelWhiskersFrame(BaseFrame):
         self.iter = self.iter - 1
 
         self.rdb.SetSelection(0)
+        self.wrdb.SetSelection(0)
+        self.choice_panel.changeFieldsVisible(None)
         self.img_index = self.index[self.iter]
         img_name = Path(self.index[self.iter]).name
         self.figure.delaxes(
