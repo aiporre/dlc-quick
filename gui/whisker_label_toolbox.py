@@ -234,44 +234,74 @@ class ScrollPanel(SP.ScrolledPanel):
         SP.ScrolledPanel.__init__(self, parent, -1, style=wx.SUNKEN_BORDER)
         self.SetupScrolling(scroll_x=True, scroll_y=True, scrollToTop=False)
         self.Layout()
-        self.whiskers = {}
-        self.num_whiskers = 0
-        self.whiskerparts = None
-        self.bodyparts = None
 
 
     def on_focus(self, event):
         pass
 
+    @property
+    def num_whiskers_parts(self):
+        '''
+        current number of whisker points
+
+        '''
+        current_bodyname_selection = self.whisker_names[self.whiskerradiobox.GetSelection()]
+        num_whiskers = self.whiskers_lenghts[current_bodyname_selection]
+        return num_whiskers
+
+    @property
+    def num_whiskers(self):
+        '''
+        Kind of
+        :return:
+        '''
+        return len(self.whisker_names)
+
+    @property
+    def label_index(self):
+        '''
+        Calculate index from the radioboxes selections.
+
+        :return:
+        '''
+        whisker_name = self.whisker_names[self.whiskerradiobox.GetSelection()]
+        index = 0
+        for wname in self.whisker_names[:self.whisker_names.index(whisker_name)]:
+            index += self.whiskers_lenghts[wname]
+        index += self.whiskerpartsradiobox.GetSelection()
+        print(' == > Index: ', index)
+        return index
+
+
     def addRadioButtons(self, bodyparts, fileIndex, markersize):
         """
         Adds radio buttons for each bodypart on the right panel
         """
-        self.choiceBox = wx.BoxSizer(wx.VERTICAL)
+        self.choiceBoxSizer = wx.BoxSizer(wx.VERTICAL)
         labels = [l for l in bodyparts]
-        whiskers = list(dict.fromkeys([b[:2] for b in bodyparts]))
-        self.whiskers={}
-        for w in whiskers:
-            self.whiskers[w] = len([x for x in labels if x[:2] == w])
-        self.num_whiskers = self.whiskers.values().__iter__().__next__()
-        assert all([k == self.num_whiskers for k in self.whiskers.values()]), 'All whiskers must have the same number of points.'
-        self.bodyparts = bodyparts
-        choices = [ 'w'+str(w) for w in range(self.num_whiskers)]
-        self.whiskerparts = choices
+        self.whisker_names = list(dict.fromkeys([''.join([char_b for char_b in b if not char_b.isdigit()]) for b in bodyparts]))
 
-        self.fieldradiobox = wx.RadioBox(
+        self.whiskers_lenghts={}
+        for w_name in self.whisker_names:
+            self.whiskers_lenghts[w_name] = len([label for label in labels if w_name in label])
+
+        self.bodyparts = bodyparts
+        self.whiskerparts = [ 'w' + str(w) for w in range(max(self.whiskers_lenghts.values()))]
+
+        self.whiskerpartsradiobox = wx.RadioBox(
             self,
             label="Select a whisker point to label",
             style=wx.RA_SPECIFY_ROWS,
-            choices=choices,
+            choices=self.whiskerparts,
         )
 
         self.whiskerradiobox = wx.RadioBox(
             self,
             label="Select a whisker to label",
             style=wx.RA_SPECIFY_ROWS,
-            choices=whiskers,
+            choices=self.whisker_names,
         )
+        self.whiskerradiobox.Bind(wx.EVT_RADIOBOX, self.changeFieldsVisible)
 
         self.slider = wx.Slider(
             self,
@@ -292,24 +322,47 @@ class ScrollPanel(SP.ScrolledPanel):
         self.labelingDirection = wx.Choice(self, id=wx.ID_ANY, choices=["to base", "to tip"])
         self.labelingDirection.SetSelection(1)
 
-        self.choiceBox.Add(self.slider, 0, wx.ALL, 5)
-        self.choiceBox.Add(self.checkBox, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.slider, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.checkBox, 0, wx.ALL, 5)
 
-        self.choiceBox.Add(self.labelingModeLbl, 0, wx.ALL, 5)
-        self.choiceBox.Add(self.labelingMode, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.labelingModeLbl, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.labelingMode, 0, wx.ALL, 5)
 
-        self.choiceBox.Add(self.labelingDirectionLbl, 0, wx.ALL, 5)
-        self.choiceBox.Add(self.labelingDirection, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.labelingDirectionLbl, 0, wx.ALL, 5)
+        self.choiceBoxSizer.Add(self.labelingDirection, 0, wx.ALL, 5)
 
-        self.choiceBox.Add(self.fieldradiobox, 0, wx.EXPAND | wx.ALL, 10)
-        self.choiceBox.Add(self.whiskerradiobox, 0, wx.EXPAND | wx.ALL, 10)
+        self.choiceBoxSizer.Add(self.whiskerpartsradiobox, 0, wx.EXPAND | wx.ALL, 10)
+        self.choiceBoxSizer.Add(self.whiskerradiobox, 0, wx.EXPAND | wx.ALL, 10)
 
-        self.SetSizerAndFit(self.choiceBox)
+        self.SetSizerAndFit(self.choiceBoxSizer)
         self.Layout()
-        return (self.choiceBox, self.fieldradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.labelingMode, self.labelingDirection)
+
+        return (self.choiceBoxSizer, self.whiskerpartsradiobox, self.whiskerradiobox, self.slider, self.checkBox, self.labelingMode, self.labelingDirection)
 
     def clearBoxer(self):
-        self.choiceBox.Clear(True)
+        self.choiceBoxSizer.Clear(True)
+
+    def changeFieldsVisible(self, event):
+        # makes visible labeling parts from 0 to the number whisker points. As number of options is max(number of point in for all bodynames)
+        for i in range(len(self.whiskerparts)):
+            self.whiskerpartsradiobox.ShowItem(i, i < self.num_whiskers_parts)
+
+    def shift_selections(self, backwards=False):
+        if backwards:
+            if self.whiskerpartsradiobox.GetSelection() != 0:
+                self.whiskerpartsradiobox.SetSelection(self.whiskerpartsradiobox.GetSelection() -1)
+            else:
+                if self.whiskerradiobox.GetSelection() != 0:
+                    self.whiskerpartsradiobox.SetSelection(self.whiskers_lenghts[self.whisker_names[self.whiskerradiobox.GetSelection()]])
+                    self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() - 1)
+        else:
+            if self.whiskerpartsradiobox.GetSelection() + 1 <  self.num_whiskers_parts:
+                self.whiskerpartsradiobox.SetSelection(self.whiskerpartsradiobox.GetSelection() + 1)
+            else:
+                if self.whiskerradiobox.GetSelection() + 1 < self.num_whiskers:
+                    self.whiskerpartsradiobox.SetSelection(0)
+                    self.whiskerradiobox.SetSelection(self.whiskerradiobox.GetSelection() + 1)
+
 
 
 class LabelWhiskersFrame(BaseFrame):
@@ -627,7 +680,7 @@ class LabelWhiskersFrame(BaseFrame):
         y1 = event.ydata
 
         # get label index in the self.bodyparts array
-        label_index = len(self.whiskerparts) * self.wrdb.GetSelection() + self.rdb.GetSelection()
+        label_index = self.choice_panel.label_index
 
         if event.button == 3 and self.labelingMode.GetSelection() == 0:
             if label_index in self.buttonCounter:
@@ -641,7 +694,7 @@ class LabelWhiskersFrame(BaseFrame):
                 self.make_new_label(x1,y1)
         elif event.button == 3 and self.labelingMode.GetSelection() == 2:
             print(' right click and selection whisker labeling mode')
-            # find closest whisker curve to click position
+            # find closest whisker curve to click position and deletes it from the canvas
             closest_whisker = None
             min_dist = np.inf
             for draggable_whisker in self.draggable_whiskers:
@@ -675,7 +728,7 @@ class LabelWhiskersFrame(BaseFrame):
     def make_new_label(self, x1, y1):
 
         # get label index in the self.bodyparts array
-        label_index = len(self.whiskerparts)*self.wrdb.GetSelection()+self.rdb.GetSelection()
+        label_index = self.choice_panel.label_index
 
         if label_index in self.buttonCounter:
             wx.MessageBox(
@@ -715,12 +768,7 @@ class LabelWhiskersFrame(BaseFrame):
             self.drs.append(self.dr)
             self.updatedCoords.append(self.dr.coords)
             # update status of the radial button boxes and draw circle into the canvas
-            if self.rdb.GetSelection() < len(self.whiskerparts) - 1:
-                self.rdb.SetSelection(self.rdb.GetSelection() + 1)
-            else:
-                self.rdb.SetSelection(0)
-                if self.wrdb.GetSelection() < self.num_whiskers:
-                    self.wrdb.SetSelection(self.wrdb.GetSelection() + 1)
+            self.choice_panel.shift_selections()
 
             self.figure.canvas.draw()
 
@@ -728,15 +776,13 @@ class LabelWhiskersFrame(BaseFrame):
         """
         This function is to create a hotkey to skip down on the radio button panel.
         """
-        if self.rdb.GetSelection() < len(self.bodyparts) - 1:
-            self.rdb.SetSelection(self.rdb.GetSelection() + 1)
+        self.choice_panel.shift_selections()
 
     def previousLabel(self, event):
         """
         This function is to create a hotkey to skip up on the radio button panel.
         """
-        if self.rdb.GetSelection() < len(self.bodyparts) - 1:
-            self.rdb.SetSelection(self.rdb.GetSelection() - 1)
+        self.choice_panel.shift_selections(backwards=True)
 
     def browseDir(self, event):
         """
@@ -894,9 +940,9 @@ class LabelWhiskersFrame(BaseFrame):
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
-            self.num_whiskers = self.choice_panel.num_whiskers
-            self.whiskers = list(self.choice_panel.whiskers.keys())
-            self.whiskerparts = self.choice_panel.whiskerparts
+            # self.num_whiskers = self.choice_panel.num_whiskers_points
+            # self.whiskers = self.choice_panel.whisker_names
+            # self.whiskerparts = self.choice_panel.whiskerparts
 
             self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
@@ -946,9 +992,9 @@ class LabelWhiskersFrame(BaseFrame):
             ) = self.choice_panel.addRadioButtons(
                 self.bodyparts, self.file, self.markerSize
             )
-            self.num_whiskers = self.choice_panel.num_whiskers
-            self.whiskers = list(self.choice_panel.whiskers.keys())
-            self.whiskerparts = self.choice_panel.whiskerparts
+            # self.num_whiskers = self.choice_panel.num_whiskers_points
+            # self.whiskers = list(self.choice_panel.whiskers_lenghts.keys())
+            # self.whiskerparts = self.choice_panel.whiskerparts
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
             self.canvas.mpl_connect("button_release_event", self.onButtonRelease)
             self.buttonCounter = LabelWhiskersFrame.plot(self, self.img_index)
