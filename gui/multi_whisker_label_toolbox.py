@@ -28,6 +28,7 @@ import wx.lib.scrolledpanel as SP
 from matplotlib.backends.backend_wxagg import (
     NavigationToolbar2WxAgg as NavigationToolbar,
 )
+from matplotlib.widgets import LassoSelector
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from deeplabcut.gui import auxfun_drag
@@ -289,13 +290,13 @@ class ScrollPanel(SP.ScrolledPanel):
 
         self.SetSizerAndFit(self.choiceBox)
         self.Layout()
-        return (
-            self.choiceBox,
-            self.individualradiobox,
-            self.fieldradiobox,
-            self.change_marker,
-            self.checkBox,
-        )
+        return self.choiceBox, \
+            self.individualradiobox, \
+            self.fieldradiobox, \
+            self.change_marker, \
+            self.checkBox, \
+            self.labelingMode, \
+            self.labelingDirection
 
     def clearBoxer(self):
         self.choiceBox.Clear(True)
@@ -588,6 +589,18 @@ class LabelWhiskersFrame(BaseFrame):
             self.updateZoomPan()
             self.statusbar.SetStatusText("Pan Off")
 
+    def activateLasso(self, event):
+        """
+        Activate
+        """
+        if self.labelingMode.GetSelection() == 1:
+            self.lasso.set_active(True)
+            print('activate lasso...')
+        else:
+            self.lasso.set_active(False)
+            print('deactivate lasso')
+        self.add_whisker_detect_layer()
+
     def on_select(self, verts):
         '''
         Lasso creates labels along the vertices...
@@ -595,20 +608,21 @@ class LabelWhiskersFrame(BaseFrame):
         :return:
         '''
         # single clicks are filtered
-        if len(verts)>2:
+        if len(verts)>2 and self.individualrdb.GetStringSelection() != "single":
             # Calculate how many whisker parts are possible to label
-            maybe_n_parts_to_label = 10 # len() - self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
+            maybe_n_parts_to_label = len(self.multibodyparts) - self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
 
             # calculate which labels are going to be generated, as we just want to label the given whisker
             # only missing labels are generated for that whisker
-            label_index = 0 # self.choice_panel.label_index
             print(self.buttonCounter)
+            indiv = self.individual_names[self.individualrdb.GetSelection()]
+
             if self.labelingDirection.GetSelection() == 1:
                 # from x to tip
-                whisker_part_indices = [x + self.rdb.GetSelection() for x in range(maybe_n_parts_to_label) if x + label_index not in self.buttonCounter]
+                whisker_part_indices = [x + self.rdb.GetSelection() for x in range(maybe_n_parts_to_label) if x not in self.buttonCounter[indiv]]
             else:
                 # from x to base
-                whisker_part_indices = [self.rdb.GetSelection() - x for x in range(maybe_n_parts_to_label, -1, -1) if label_index - x not in self.buttonCounter]
+                whisker_part_indices = [self.rdb.GetSelection() - x for x in range(maybe_n_parts_to_label, -1, -1) if x not in self.buttonCounter[indiv]]
 
 
             print('whisker part indices: ', whisker_part_indices)
@@ -620,8 +634,7 @@ class LabelWhiskersFrame(BaseFrame):
             print(len(labels_coords))
             for coord, whisker_part in zip(labels_coords, whisker_part_indices):
                 self.rdb.SetSelection(whisker_part)
-                bodyparts = self.uniquebodyparts if self.individualrdb.GetStringSelection() == "single" else self.multibodyparts
-                self.make_new_label(None, *coord, bodyparts)
+                self.make_new_label(None, *coord, self.multibodyparts)
 
     def onClick(self, event):
         """
@@ -629,7 +642,7 @@ class LabelWhiskersFrame(BaseFrame):
         """
         x1 = event.xdata
         y1 = event.ydata
-        if event.button == 3:
+        if event.button == 3 and self.labelingMode.GetSelection() == 0:
             if self.individualrdb.GetStringSelection() == "single":
                 self.make_new_label(event, x1, y1, self.uniquebodyparts)
             else:
@@ -939,6 +952,8 @@ class LabelWhiskersFrame(BaseFrame):
                 self.rdb,
                 self.change_marker_size,
                 self.checkBox,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.uniquebodyparts, self.individual_names, self.file, self.markerSize
             )
@@ -956,6 +971,8 @@ class LabelWhiskersFrame(BaseFrame):
                 self.rdb,
                 self.change_marker_size,
                 self.checkBox,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.multibodyparts, self.individual_names, self.file, self.markerSize
             )
@@ -976,7 +993,15 @@ class LabelWhiskersFrame(BaseFrame):
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+        self.labelingMode.Bind(wx.EVT_CHOICE, self.activateLasso)
         self.change_marker_size.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+
+        # # make lasso selector active:
+        if self.labelingMode.GetSelection() == wx.NOT_FOUND:
+            self.labelingMode.setSelection(0)
+        self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select, button=3)
+        if self.labelingMode.GetSelection() != 1:
+            self.lasso.set_active(False)
 
     def create_dataframe(
         self,
@@ -1031,6 +1056,8 @@ class LabelWhiskersFrame(BaseFrame):
                 self.rdb,
                 self.change_marker_size,
                 self.checkBox,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.uniquebodyparts, self.individual_names, self.file, self.markerSize
             )
@@ -1056,6 +1083,8 @@ class LabelWhiskersFrame(BaseFrame):
                 self.rdb,
                 self.change_marker_size,
                 self.checkBox,
+                self.labelingMode,
+                self.labelingDirection,
             ) = self.choice_panel.addRadioButtons(
                 self.multibodyparts, self.individual_names, self.file, self.markerSize
             )
