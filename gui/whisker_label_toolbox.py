@@ -48,6 +48,7 @@ class WhiskerDetection:
         self.results = test_result
         print('self.results.columns = ', self.results.columns)
         self.num_detections = len(self.results.id.unique())
+        self.active =False
 
     def get_whisker(self, time):
         print('get whisker TIME input : ', time)
