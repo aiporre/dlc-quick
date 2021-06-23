@@ -38,11 +38,15 @@ from deeplabcut.utils import (
     auxfun_multianimal,
     auxiliaryfunctions_3d,
 )
+from gui.draggable_curve import DraggableCurve
 from gui.utils.interpolation import uniform_interpolation
 
 # ###########################################################################
 # Class for GUI MainFrame
 # ###########################################################################
+from gui.whisker_label_toolbox import WhiskerDetection
+
+
 class ImagePanel(BasePanel):
     def __init__(self, parent, config, config3d, sourceCam, gui_size, **kwargs):
         super(ImagePanel, self).__init__(parent, config, gui_size, **kwargs)
@@ -589,7 +593,7 @@ class LabelWhiskersFrame(BaseFrame):
             self.updateZoomPan()
             self.statusbar.SetStatusText("Pan Off")
 
-    def activateLasso(self, event):
+    def onChangeLabelingMode(self, event):
         """
         Activate
         """
@@ -599,7 +603,28 @@ class LabelWhiskersFrame(BaseFrame):
         else:
             self.lasso.set_active(False)
             print('deactivate lasso')
-        self.add_whisker_detect_layer()
+
+        if self.whisker_detection:
+            if self.labelingMode.GetSelection() == 2:
+                self.add_whisker_detect_layer()
+                self.whisker_detection.active =True
+            else:
+                self.whisker_detection.active = False
+
+
+    def add_whisker_detect_layer(self):
+        print('--------- adding whisker layer')
+        self.draggable_whiskers = []
+        if self.whisker_detection is None or not self.labelingMode.GetSelection() == 2:
+            print('No whisker detection for this labeling')
+            return
+        print('=====>> frame time extracted: ', os.path.basename(self.img_index).split('.')[0][3:])
+        frame_time = int(os.path.basename(self.img_index).split('.')[0][3:])
+        ws_coords = self.whisker_detection.get_whisker(frame_time)
+        for i, c in enumerate(ws_coords):
+            color = self.colormap(self.norm_whiskers(self.color_index_whiskers[i]))
+            self.draggable_whiskers.append(DraggableCurve(list(zip(c[4], c[5])), selection_radius=3, figure=self.figure, axes=self.axes, color=color))
+        self.figure.canvas.draw()
 
     def on_select(self, verts):
         '''
@@ -993,7 +1018,7 @@ class LabelWhiskersFrame(BaseFrame):
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
 
         self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
-        self.labelingMode.Bind(wx.EVT_CHOICE, self.activateLasso)
+        self.labelingMode.Bind(wx.EVT_CHOICE, self.onChangeLabelingMode)
         self.change_marker_size.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
 
         # # make lasso selector active:
@@ -1002,6 +1027,19 @@ class LabelWhiskersFrame(BaseFrame):
         self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select, button=3)
         if self.labelingMode.GetSelection() != 1:
             self.lasso.set_active(False)
+
+        # load whisker tracking
+        try:
+            self.whisker_detection = WhiskerDetection(self.dir)
+            self.norm_whiskers, self.color_index_whiskers = self.image_panel.getColorIndices(self.img_index, range(
+                self.whisker_detection.num_detections))
+        except Exception as e:
+            print('Cannot load whisker detection for this labeling', self.dir)
+            print('Execption: ', e)
+            self.whisker_detection = None
+        # add whisker layer:
+        self.add_whisker_detect_layer()
+
 
     def create_dataframe(
         self,
@@ -1099,7 +1137,16 @@ class LabelWhiskersFrame(BaseFrame):
                 self.img, self.image_axis, self.iter, self.multibodyparts, self.colormap
             )
             self.checkBox.Bind(wx.EVT_CHECKBOX, self.activateSlider)
+            self.labelingMode.Bind(wx.EVT_CHOICE, self.onChangeLabelingMode)
             self.change_marker_size.Bind(wx.EVT_SLIDER, self.OnSliderScroll)
+
+        self.labelingMode.Bind(wx.EVT_CHOICE, self.onChangeLabelingMode)
+        if self.lasso and self.lasso.active:
+            self.labelingMode.SetSelection(1)
+        elif self.whisker_detection and self.whisker_detection.active:
+            self.labelingMode.SetSelection(2)
+        else:
+            self.labelingMode.SetSelection(0)
 
     def nextImage(self, event):
         """
