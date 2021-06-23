@@ -428,41 +428,6 @@ class LabelWhiskersFrame(BaseFrame):
         # draggable whisker prelabels
         self.draggable_whiskers = []
 
-    def on_select(self, verts):
-        '''
-        Lasso creates labels along the vertices...
-        :param verts:
-        :return:
-        '''
-        # single clicks are filtered
-        if len(verts)>2:
-            # Calculate how many whisker parts are possible to label
-            maybe_n_parts_to_label = 10 # len() - self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
-
-            # calculate which labels are going to be generated, as we just want to label the given whisker
-            # only missing labels are generated for that whisker
-            label_index = 0 # self.choice_panel.label_index
-            print(self.buttonCounter)
-            if self.labelingDirection.GetSelection() == 1:
-                # from x to tip
-                whisker_part_indices = [x + self.rdb.GetSelection() for x in range(maybe_n_parts_to_label) if x + label_index not in self.buttonCounter]
-            else:
-                # from x to base
-                whisker_part_indices = [self.rdb.GetSelection() - x for x in range(maybe_n_parts_to_label, -1, -1) if label_index - x not in self.buttonCounter]
-
-
-            print('whisker part indices: ', whisker_part_indices)
-            N_labels = len(whisker_part_indices)
-
-            # N_labels new whisker parts are generated
-            vertices = plot_path(verts).interpolated(10).vertices # interpolation is required to obtain enough points
-            labels_coords = uniform_interpolation(vertices, N_labels)
-            print(len(labels_coords))
-            for coord, whisker_part in zip(labels_coords, whisker_part_indices):
-                self.rdb.SetSelection(whisker_part)
-                self.make_new_label(*coord)
-
-
 
 
     ###############################################################################################################################
@@ -622,6 +587,40 @@ class LabelWhiskersFrame(BaseFrame):
         if self.pan.GetValue():
             self.updateZoomPan()
             self.statusbar.SetStatusText("Pan Off")
+
+    def on_select(self, verts):
+        '''
+        Lasso creates labels along the vertices...
+        :param verts:
+        :return:
+        '''
+        # single clicks are filtered
+        if len(verts)>2:
+            # Calculate how many whisker parts are possible to label
+            maybe_n_parts_to_label = 10 # len() - self.rdb.GetSelection() if self.labelingDirection.GetSelection() == 1 else self.rdb.GetSelection()  # number of labels
+
+            # calculate which labels are going to be generated, as we just want to label the given whisker
+            # only missing labels are generated for that whisker
+            label_index = 0 # self.choice_panel.label_index
+            print(self.buttonCounter)
+            if self.labelingDirection.GetSelection() == 1:
+                # from x to tip
+                whisker_part_indices = [x + self.rdb.GetSelection() for x in range(maybe_n_parts_to_label) if x + label_index not in self.buttonCounter]
+            else:
+                # from x to base
+                whisker_part_indices = [self.rdb.GetSelection() - x for x in range(maybe_n_parts_to_label, -1, -1) if label_index - x not in self.buttonCounter]
+
+
+            print('whisker part indices: ', whisker_part_indices)
+            N_labels = len(whisker_part_indices)
+
+            # N_labels new whisker parts are generated
+            vertices = plot_path(verts).interpolated(10).vertices # interpolation is required to obtain enough points
+            labels_coords = uniform_interpolation(vertices, N_labels)
+            print(len(labels_coords))
+            for coord, whisker_part in zip(labels_coords, whisker_part_indices):
+                self.rdb.SetSelection(whisker_part)
+                self.make_new_label(*coord)
 
     def onClick(self, event):
         """
