@@ -620,7 +620,8 @@ class LabelWhiskersFrame(BaseFrame):
             print(len(labels_coords))
             for coord, whisker_part in zip(labels_coords, whisker_part_indices):
                 self.rdb.SetSelection(whisker_part)
-                self.make_new_label(*coord)
+                bodyparts = self.uniquebodyparts if self.individualrdb.GetStringSelection() == "single" else self.multibodyparts
+                self.make_new_label(None, *coord, bodyparts)
 
     def onClick(self, event):
         """
@@ -629,19 +630,18 @@ class LabelWhiskersFrame(BaseFrame):
         x1 = event.xdata
         y1 = event.ydata
         if event.button == 3:
-            num_indiv = self.individualrdb.GetSelection()
-            indiv = self.individual_names[num_indiv]
-            print(' ===> indiv: ', indiv)
-            idcolor = self.idmap(num_indiv)
             if self.individualrdb.GetStringSelection() == "single":
-                self.make_new_label(event, idcolor, indiv, x1, y1, self.uniquebodyparts)
+                self.make_new_label(event, x1, y1, self.uniquebodyparts)
             else:
-                self.make_new_label(event, idcolor, indiv, x1, y1, self.multibodyparts)
+                self.make_new_label(event, x1, y1, self.multibodyparts)
 
         self.canvas.mpl_disconnect(self.onClick)
 
-    def make_new_label(self, event, idcolor, indiv, x1, y1, bodyparts):
-        print('is single then that is the unique body parts: ', self.uniquebodyparts)
+    def make_new_label(self, event, x1, y1, bodyparts):
+        num_indiv = self.individualrdb.GetSelection()
+        indiv = self.individual_names[num_indiv]
+        idcolor = self.idmap(num_indiv)
+
         self.norm, self.colorIndex = self.image_panel.getColorIndices(
             self.img, bodyparts
         )
