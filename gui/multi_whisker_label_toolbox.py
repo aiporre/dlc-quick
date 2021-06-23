@@ -634,110 +634,78 @@ class LabelWhiskersFrame(BaseFrame):
             indiv = self.individual_names[num_indiv]
             print(' ===> indiv: ', indiv)
             idcolor = self.idmap(num_indiv)
-
             if self.individualrdb.GetStringSelection() == "single":
-                print('is single then that is the unique body parts: ', self.uniquebodyparts)
-                self.norm, self.colorIndex = self.image_panel.getColorIndices(
-                    self.img, self.uniquebodyparts
-                )
-                if (
-                    self.uniquebodyparts[self.rdb.GetSelection()]
-                    in self.buttonCounter[indiv]
-                ):
-                    wx.MessageBox(
-                        "%s is already annotated for %s. \n Select another body part to annotate."
-                        % (
-                            str(self.uniquebodyparts[self.rdb.GetSelection()]),
-                            str(
-                                self.individual_names[self.individualrdb.GetSelection()]
-                            ),
-                        ),
-                        "Error!",
-                        wx.OK | wx.ICON_ERROR,
-                    )
-                else:
-                    self.make_new_label(idcolor, indiv, x1, y1, self.uniquebodyparts)
-
-                    if self.rdb.GetSelection() < len(self.uniquebodyparts) - 1:
-                        self.rdb.SetSelection(self.rdb.GetSelection() + 1)
-                    else:
-                        self.rdb.SetSelection(0)
-                        if (
-                            self.individualrdb.GetSelection()
-                            < len(self.individual_names) - 1
-                        ):
-                            self.individualrdb.SetSelection(
-                                self.individualrdb.GetSelection() + 1
-                            )
-                        LabelWhiskersFrame.select_individual(self, event)
-
+                self.make_new_label(event, idcolor, indiv, x1, y1, self.uniquebodyparts)
             else:
-                self.norm, self.colorIndex = self.image_panel.getColorIndices(
-                    self.img, self.multibodyparts
-                )
-                if (
-                    self.multibodyparts[self.rdb.GetSelection()]
-                    in self.buttonCounter[indiv]
-                ):
-                    wx.MessageBox(
-                        "%s is already annotated for %s. \n Select another body part to annotate."
-                        % (
-                            str(self.multibodyparts[self.rdb.GetSelection()]),
-                            str(
-                                self.individual_names[self.individualrdb.GetSelection()]
-                            ),
-                        ),
-                        "Error!",
-                        wx.OK | wx.ICON_ERROR,
-                    )
-                else:
-                    self.make_new_label(idcolor, indiv, x1, y1, self.multibodyparts)
+                self.make_new_label(event, idcolor, indiv, x1, y1, self.multibodyparts)
 
-                    if self.rdb.GetSelection() < len(self.multibodyparts) - 1:
-                        self.rdb.SetSelection(self.rdb.GetSelection() + 1)
-                    else:
-                        self.rdb.SetSelection(0)
-                        if (
-                            self.individualrdb.GetSelection()
-                            < len(self.individual_names) - 1
-                        ):
-                            self.individualrdb.SetSelection(
-                                self.individualrdb.GetSelection() + 1
-                            )
-                        LabelWhiskersFrame.select_individual(self, event)
         self.canvas.mpl_disconnect(self.onClick)
 
-
-    def make_new_label(self, idcolor, indiv, x1, y1, bodyparts):
-        color = self.colormap(
-            self.norm(self.colorIndex[self.rdb.GetSelection()])
+    def make_new_label(self, event, idcolor, indiv, x1, y1, bodyparts):
+        print('is single then that is the unique body parts: ', self.uniquebodyparts)
+        self.norm, self.colorIndex = self.image_panel.getColorIndices(
+            self.img, bodyparts
         )
-        circle = [
-            patches.Circle(
-                (x1, y1),
-                radius=self.markerSize,
-                fc=color,
-                ec=idcolor,
-                lw=self.edgewidth,
-                alpha=self.alpha,
+        if (
+                bodyparts[self.rdb.GetSelection()]
+                in self.buttonCounter[indiv]
+        ):
+            wx.MessageBox(
+                "%s is already annotated for %s. \n Select another body part to annotate."
+                % (
+                    str(bodyparts[self.rdb.GetSelection()]),
+                    str(
+                        self.individual_names[self.individualrdb.GetSelection()]
+                    ),
+                ),
+                "Error!",
+                wx.OK | wx.ICON_ERROR,
             )
-        ]
-        self.num.append(circle)
-        self.axes.add_patch(circle[0])
-        self.dr = auxfun_drag.DraggablePoint(
-            circle[0],
-            bodyparts[self.rdb.GetSelection()],
-            individual_names=indiv,
-        )
-        self.dr.connect()
-        self.buttonCounter[indiv].append(
-            bodyparts[self.rdb.GetSelection()]
-        )
-        self.dr.coords = [
-            [x1, y1, indiv, bodyparts[self.rdb.GetSelection()]]
-        ]
-        self.drs.append(self.dr)
-        self.updatedCoords.append(self.dr.coords)
+        else:
+            color = self.colormap(
+                self.norm(self.colorIndex[self.rdb.GetSelection()])
+            )
+            circle = [
+                patches.Circle(
+                    (x1, y1),
+                    radius=self.markerSize,
+                    fc=color,
+                    ec=idcolor,
+                    lw=self.edgewidth,
+                    alpha=self.alpha,
+                )
+            ]
+            self.num.append(circle)
+            self.axes.add_patch(circle[0])
+            self.dr = auxfun_drag.DraggablePoint(
+                circle[0],
+                bodyparts[self.rdb.GetSelection()],
+                individual_names=indiv,
+            )
+            self.dr.connect()
+            self.buttonCounter[indiv].append(
+                bodyparts[self.rdb.GetSelection()]
+            )
+            self.dr.coords = [
+                [x1, y1, indiv, bodyparts[self.rdb.GetSelection()]]
+            ]
+            self.drs.append(self.dr)
+            self.updatedCoords.append(self.dr.coords)
+
+            # shifting radio buttons
+
+            if self.rdb.GetSelection() < len(bodyparts) - 1:
+                self.rdb.SetSelection(self.rdb.GetSelection() + 1)
+            else:
+                self.rdb.SetSelection(0)
+                if (
+                        self.individualrdb.GetSelection()
+                        < len(self.individual_names) - 1
+                ):
+                    self.individualrdb.SetSelection(
+                        self.individualrdb.GetSelection() + 1
+                    )
+                LabelWhiskersFrame.select_individual(self, event)
 
     def nextLabel(self, event):
         """
