@@ -29,6 +29,8 @@ class WhiskerModelTraining(BaseFrame):
         iterationLbl = wx.StaticText(self.panel, -1, "Iteration")
         current_iteration = 'iteration-' + str(cfg['iteration'])
         self.iterations = self.find_iterations()
+        assert len(self.iterations) > 0, "Couldn't find an iteration, you must train a dlc-model first."
+
         self.iteration = wx.Choice(self.panel, id=-1, choices=self.iterations)
         # sets the current interation from the config.yaml file.
         try:
@@ -154,6 +156,9 @@ class WhiskerModelTraining(BaseFrame):
 
         inputSizer.Add(batchSizeLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.batchSize, 0, wx.EXPAND, 2)
+
+        inputSizer.Add(learningRateLbl, 0, wx.EXPAND, 2)
+        inputSizer.Add(self.learningRate, 0, wx.EXPAND, 2)
 
         inputSizer.Add(cacheLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.cache, 0, wx.EXPAND, 2)
