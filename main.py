@@ -462,6 +462,12 @@ class NewProjectFrame(wx.Frame):
         self.copyVideos = wx.CheckBox(self.newProjectFrame, -1, "")
         self.copyVideos.SetValue(True)
 
+        # check box to make project multi animal
+        multiAnimalLbl = wx.StaticText(self.newProjectFrame, -1, "Make multi-animal project:")
+        self.multiAnimal = wx.CheckBox(self.newProjectFrame, -1, "")
+        self.multiAnimal.SetValue(False)
+
+
         # list of videos to be processed.
         self.listIndex = 0
         videosListLbl = wx.StaticText(self.newProjectFrame, -1, "Videos:")
@@ -508,6 +514,8 @@ class NewProjectFrame(wx.Frame):
         buttonSizer = wx.BoxSizer(wx.VERTICAL)
         buttonSizer.Add(copyVideosLbl, 0, wx.EXPAND, 2)
         buttonSizer.Add(self.copyVideos, 0, wx.EXPAND, 2)
+        buttonSizer.Add(multiAnimalLbl, 0, wx.EXPAND, 2)
+        buttonSizer.Add(self.multiAnimal, 0, wx.EXPAND, 2)
         buttonSizer.Add(self.buttonPlus, 0, wx.EXPAND, 2)
         buttonSizer.Add(self.buttonMinus, 0, wx.EXPAND, 2)
         buttonSizer.Add(buttonCreate, 0, wx.EXPAND, 2)
@@ -530,6 +538,7 @@ class NewProjectFrame(wx.Frame):
         experimenter = self.experimenter.GetValue()
         wdir = self.wdir.GetPath()
         copy_videos = self.copyVideos.GetValue()
+        multi_animal = self.multiAnimal.GetValue()
         videos = get_videos(self.videosList)
 
         print('Importing deeplabcut....')
@@ -537,7 +546,7 @@ class NewProjectFrame(wx.Frame):
         print('Done')
 
         config_path = d.create_new_project(project=name, experimenter=experimenter, videos=videos,
-                                           working_directory=wdir, copy_videos=copy_videos)
+                                           working_directory=wdir, copy_videos=copy_videos, multianimal=multi_animal)
         print('project create with config.yaml file:', config_path)
         self.Close()
 
