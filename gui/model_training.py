@@ -63,6 +63,11 @@ class WhiskerModelTraining(BaseFrame):
         self.batchSize = wx.TextCtrl(self.panel, -1, str(self.training_cfg["batch_size"]))
         self.batchSize.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.batchSize))
 
+        # text control to change learning rate
+        learningRateLbl = wx.StaticText(self.panel, -1, "Learning Rate")
+        self.learningRate = wx.TextCtrl(self.panel, -1, str(self.training_cfg["learning_rate"]))
+        self.learningRate.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.learningRate))
+
         # The shuffle to create random batches
         shuffleBufferLbl = wx.StaticText(self.panel, -1, "Size of buffer to make shuffle after each epoch:")
         self.shuffleBuffer = wx.TextCtrl(self.panel, -1, str(self.training_cfg["shuffle_buffer"]))
@@ -198,7 +203,17 @@ class WhiskerModelTraining(BaseFrame):
     def onSaveConfig(self, event):
         print('saving config dataset: :) ')
         tf.enable_eager_execution()
+        # the model_output_path is where the weights and logs are saved
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
+        # applies configurations
+        self.training_cfg['datapath'] = self.datapath.GetPath()
+        self.training_cfg['enable_eager'] = self.enableEager.GetValue()
+        self.training_cfg['image_dim_height'] = int(self.imageDimHeight.GetValue())
+        self.training_cfg['image_dim_width'] = int(self.imageDimWidth.GetValue())
+        self.training_cfg['batch_size'] = int(self.batchSize.GetValue())
+        self.training_cfg['learning_rate'] = float(self.learningRate.GetValue())
+        write_whisking_config(self.training_config_path, self.training_cfg)
+
         self.model_trainer = Trainer(self.training_cfg['datapath'],
                 enable_eager=self.training_cfg['enable_eager'],
                 img_height=self.training_cfg['image_dim_height'],

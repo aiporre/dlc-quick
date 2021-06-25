@@ -13,18 +13,18 @@ def parse_yaml(filepath):
             print(exc)
 def create_whisking_config_template():
     yaml_str = """\
-        # Dataset parameters
+    # Dataset parameters
             datapath:
             enable_eager:
             image_dim_width:
             image_dim_height:
             \n
-        # Dataset optimization
+    # Dataset optimization
             cache:
             shuffle_buffer:
             split_rate:
             \n
-        # Training parameters
+    # Training parameters
             learning_rate:
             display_iter:
             batch_size:
