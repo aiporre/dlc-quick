@@ -604,22 +604,26 @@ class LabelWhiskersFrame(BaseFrame):
             self.lasso.set_active(False)
             print('deactivate lasso')
 
-        if self.whisker_detection:
-            if self.labelingMode.GetSelection() == 2:
-                self.add_whisker_detect_layer()
-                self.whisker_detection.active =True
-            else:
-                self.whisker_detection.active = False
-
+        # active flag is to remember selection labeling_mode as Lasso has it's own. Used in select_individual
+        if self.labelingMode.GetSelection() == 2:
+            self.whisker_detection.active =True
+        else:
+            self.whisker_detection.active = False
+        # will remove whiskers detected from canvas if labeling mode is not 'Whisker Tracking'
+        self.add_whisker_detect_layer()
 
     def add_whisker_detect_layer(self):
-        print('--------- adding whisker layer')
-        self.draggable_whiskers = []
+        # first removes from canvas
+        if len(self.draggable_whiskers)>0:
+            for dw in self.draggable_whiskers:
+                dw.delete_from_canvas()
+            self.draggable_whiskers = []
+
         if self.whisker_detection is None or not self.labelingMode.GetSelection() == 2:
-            print('No whisker detection for this labeling')
+            print('Whisker detection didn\'t load correctly. Labeling Mode: ', self.labelingMode.GetStringSelection())
             return
-        print('=====>> frame time extracted: ', os.path.basename(self.img_index).split('.')[0][3:])
-        frame_time = int(os.path.basename(self.img_index).split('.')[0][3:])
+        print('Loading whisking detection layer from file: ', os.path.basename(self.img).split('.')[0][3:])
+        frame_time = int(os.path.basename(self.img).split('.')[0][3:])
         ws_coords = self.whisker_detection.get_whisker(frame_time)
         for i, c in enumerate(ws_coords):
             color = self.colormap(self.norm_whiskers(self.color_index_whiskers[i]))
@@ -672,6 +676,20 @@ class LabelWhiskersFrame(BaseFrame):
                 self.make_new_label(event, x1, y1, self.uniquebodyparts)
             else:
                 self.make_new_label(event, x1, y1, self.multibodyparts)
+        elif event.button == 3 and self.labelingMode.GetSelection() == 2:
+            print(' right click and selection whisker labeling mode')
+            # find closest whisker curve to click position and deletes it from the canvas
+            closest_whisker = None
+            min_dist = np.inf
+            for draggable_whisker in self.draggable_whiskers:
+                if draggable_whisker.active:
+                    dist = draggable_whisker.calculate_close_distance_to_curve(x1,y1)
+                    if dist is not None and dist < min_dist:
+                        closest_whisker = draggable_whisker
+                        min_dist = dist
+            if closest_whisker is not None:
+                self.on_select(closest_whisker.point_set)
+                closest_whisker.delete_from_canvas()
 
         self.canvas.mpl_disconnect(self.onClick)
 
@@ -847,6 +865,7 @@ class LabelWhiskersFrame(BaseFrame):
                 )
             self.dataFrame.sort_index(inplace=True)
             self.prev.Enable(True)
+
             # Finds the first empty row in the dataframe and sets the iteration to that index
             self.iter = np.argmax(np.isnan(self.dataFrame.values).all(axis=1))
         except FileNotFoundError:
@@ -1023,7 +1042,7 @@ class LabelWhiskersFrame(BaseFrame):
 
         # # make lasso selector active:
         if self.labelingMode.GetSelection() == wx.NOT_FOUND:
-            self.labelingMode.setSelection(0)
+            self.labelingMode.SetSelection(0)
         self.lasso = LassoSelector(self.image_panel.axes, onselect=self.on_select, button=3)
         if self.labelingMode.GetSelection() != 1:
             self.lasso.set_active(False)
@@ -1031,7 +1050,7 @@ class LabelWhiskersFrame(BaseFrame):
         # load whisker tracking
         try:
             self.whisker_detection = WhiskerDetection(self.dir)
-            self.norm_whiskers, self.color_index_whiskers = self.image_panel.getColorIndices(self.img_index, range(
+            self.norm_whiskers, self.color_index_whiskers = self.image_panel.getColorIndices(self.img, range(
                 self.whisker_detection.num_detections))
         except Exception as e:
             print('Cannot load whisker detection for this labeling', self.dir)
@@ -1208,6 +1227,9 @@ class LabelWhiskersFrame(BaseFrame):
 
             self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
 
+            if self.whisker_detection.active:
+                self.add_whisker_detect_layer()
+
     def prevImage(self, event):
         """
         Checks the previous Image and enables user to move the annotations.
@@ -1254,6 +1276,9 @@ class LabelWhiskersFrame(BaseFrame):
         self.buttonCounter = LabelWhiskersFrame.plot(self, self.img)
 
         self.cidClick = self.canvas.mpl_connect("button_press_event", self.onClick)
+
+        if self.whisker_detection.active:
+            self.add_whisker_detect_layer()
 
     def plot(self, img):
         """
@@ -1402,7 +1427,9 @@ if __name__ == '__main__':
     imtypes = ["*.png"]
     config3d = None
     sourceCam = None
-    config = '/Users/ariel/funana/quick-dlc/test2multiwhisker-agkuner-2021-06-20/config.yaml'
+    # config = '/Users/ariel/funana/quick-dlc/test2multiwhisker-agkuner-2021-06-20/config.yaml'
+    # config = '/Users/ariel/funana/projects-whisker/wtmulti-agkuner-2021-04-20/config.yaml'
+    config = "/Users/ariel/funana/projects-whisker/wtfree5ma-agkuner-2021-06-25/config.yaml"
     startpath = os.getcwd()
     wd = Path(config).resolve().parents[0]
     os.chdir(str(wd))
