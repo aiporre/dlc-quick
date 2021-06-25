@@ -1,3 +1,5 @@
+import subprocess
+import webbrowser
 from pathlib import Path
 
 import wx
@@ -434,8 +436,9 @@ class AddNewVideos(wx.Frame):
 
 
 class NewProjectFrame(wx.Frame):
-    def __init__(self, parent, title='New project', config=None):
+    def __init__(self, parent, mainFrame, title='New project', config=None):
         super(NewProjectFrame, self).__init__(parent, title=title, size=(640, 500))
+        self.mainFrame = mainFrame
         self.newProjectFrame = MainPanel(self)
         self.WIDTHOFINPUTS = 400
         self.config = config
@@ -456,6 +459,10 @@ class NewProjectFrame(wx.Frame):
         # TODO: make default directory the current directory
         cwd = os.getcwd()
         self.wdir = wx.DirPickerCtrl(self.newProjectFrame, -1, cwd)
+
+        # choice box with to select type of quick-DLC Project
+        projectTypeLbl = wx.StaticText(self.newProjectFrame, -1, "Type of quick-DLC")
+        self.projectType = wx.Choice(self.newProjectFrame, -1, choices=['contact', 'motion', 'whisking'])
 
         # check box to select copy videos
         copyVideosLbl = wx.StaticText(self.newProjectFrame, -1, "Copy videos:")
@@ -509,6 +516,8 @@ class NewProjectFrame(wx.Frame):
         inputSizer.Add(self.wdir, 0, wx.EXPAND, 2)
         inputSizer.Add(videosListLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.videosList, 0, wx.EXPAND, 2)
+        inputSizer.Add(projectTypeLbl, 0, wx.EXPAND, 2)
+        inputSizer.Add(self.projectType, 0, wx.EXPAND, 2)
 
         # buttons (copy videos, add new video, remove video and run create project)
         buttonSizer = wx.BoxSizer(wx.VERTICAL)
@@ -540,14 +549,14 @@ class NewProjectFrame(wx.Frame):
         copy_videos = self.copyVideos.GetValue()
         multi_animal = self.multiAnimal.GetValue()
         videos = get_videos(self.videosList)
-
         print('Importing deeplabcut....')
         import deeplabcut as d
-        print('Done')
-
         config_path = d.create_new_project(project=name, experimenter=experimenter, videos=videos,
                                            working_directory=wdir, copy_videos=copy_videos, multianimal=multi_animal)
+        d.auxiliaryfunctions.edit_config(config_path, {"project_type": self.projectType.GetStringSelection()})
         print('project create with config.yaml file:', config_path)
+
+        self.mainFrame.configPath.SetPath(config_path)
         self.Close()
 
     def onAddVideo(self, event):
@@ -2165,6 +2174,9 @@ class MainFrame(wx.Frame):
         self.startpath = os.getcwd()
         os.chdir(Path(cwd).parent.absolute())
 
+        self.openConfigButton = wx.Button(self.mainPanel, -1, "open config")
+        self.openConfigButton.Bind(wx.EVT_BUTTON, self.on_open_config)
+
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -2183,6 +2195,10 @@ class MainFrame(wx.Frame):
         mainSizer.Add(buttonSizer, 0, wx.CENTER | wx.TOP, 10)
         mainSizer.Add(configPathLbl, 0, wx.EXPAND | wx.TOP, 10)
         mainSizer.Add(self.configPath, 0, wx.EXPAND | wx.BOTTOM, 10)
+        openConfigSizer = wx.BoxSizer(wx.HORIZONTAL)
+        openConfigSizer.Add(self.openConfigButton)
+        mainSizer.Add(openConfigSizer, 0, wx.BOTTOM | wx.RIGHT | wx.ALIGN_RIGHT, 10)
+
 
         self.mainPanel.SetSizer(mainSizer)
         mainSizer.Fit(self)
@@ -2204,6 +2220,22 @@ class MainFrame(wx.Frame):
             sizer.Add(item, 0, wx.EXPAND, 2)
         return sizer, items
 
+    def on_open_config(self, event):
+        config_path = self.configPath.GetPath()
+        if config_path != "" and os.path.exists(config_path) and config_path.endswith(".yaml"):
+            # For mac compatibility
+            import platform
+            if platform.system() == "Darwin":
+                self.file_open_bool = subprocess.call(["open", config_path])
+                self.file_open_bool = True
+            else:
+                self.file_open_bool = webbrowser.open(config_path)
+
+            if self.file_open_bool:
+                pass
+            else:
+                raise FileNotFoundError("Error while opening config.yaml file: " + str(config_path))
+
     def on_label_frames(self, event):
         print('opening dlc labeling tool box...')
         import deeplabcut as d
@@ -2223,7 +2255,7 @@ class MainFrame(wx.Frame):
             print('new frame not specified in button!! ')
             return
         elif frame_type == 'create new project':
-            frame = NewProjectFrame(self.GetParent(), config=self.configPath.GetPath())
+            frame = NewProjectFrame(self.GetParent(), self, config=self.configPath.GetPath())
         elif frame_type == 'add new videos':
             frame = AddNewVideos(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'extract frames':
