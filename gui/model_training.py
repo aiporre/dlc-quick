@@ -19,6 +19,7 @@ class WhiskerModelTraining(BaseFrame):
         self.panel = WidgetPanel(self)
         self.WIDTHOFINPUTS = 100
         self.config = config
+
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Training Whisker Model")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -29,24 +30,26 @@ class WhiskerModelTraining(BaseFrame):
         current_iteration = 'iteration-' + str(cfg['iteration'])
         self.iterations = self.find_iterations()
         self.iteration = wx.Choice(self.panel, id=-1, choices=self.iterations)
+        # sets the current interation from the config.yaml file.
         try:
             self.iteration.SetSelection(self.iterations.index(current_iteration))
         except ValueError as e:
             print('Error' + str(e))
             self.iteration.SetSelection(0)
 
-        # reading training config for autofill:
+        # Reading training config for autofill:
         self.project_path = cfg['project_path']
+        # the training config file, named "contact.yaml" is saved on the dlc-models/itertiation../contact-model
         self.training_config_path = os.path.join(self.project_path, 'dlc-models', self.iterations[self.iteration.GetSelection()],'contact-model', 'contact.yaml')
+        # Read the training config. If the program doesn't exists it creates a default
         self.training_cfg = WhiskerModelTraining.read_config(self.training_config_path)
 
-
+        # CheckBox activate eager mode
         enableEagerLbl = wx.StaticText(self.panel, -1, "Enable Eager")
         self.enableEager = wx.CheckBox(self.panel, -1, "")
         self.enableEager.SetValue(self.training_cfg['enable_eager'])
 
-
-
+        # define dimenstion of the of input to the image
         imageDimWidthLbl = wx.StaticText(self.panel, -1, "Image width input to the network")
         self.imageDimWidth = wx.TextCtrl(self.panel, -1, str(self.training_cfg["image_dim_width"]))
         self.imageDimWidth.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.imageDimWidth))
@@ -55,27 +58,33 @@ class WhiskerModelTraining(BaseFrame):
         self.imageDimHeight = wx.TextCtrl(self.panel, -1, str(self.training_cfg["image_dim_height"]))
         self.imageDimHeight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.imageDimHeight))
 
+        # text control to change batch size
         batchSizeLbl = wx.StaticText(self.panel, -1, "Batch size")
         self.batchSize = wx.TextCtrl(self.panel, -1, str(self.training_cfg["batch_size"]))
         self.batchSize.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.batchSize))
 
+        # The shuffle to create random batches
         shuffleBufferLbl = wx.StaticText(self.panel, -1, "Size of buffer to make shuffle after each epoch:")
         self.shuffleBuffer = wx.TextCtrl(self.panel, -1, str(self.training_cfg["shuffle_buffer"]))
         self.shuffleBuffer.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffleBuffer))
 
+        # Text control to define number of epoch to train.
         epochNumberLbl = wx.StaticText(self.panel, -1, "Number of epochs to train:")
         self.epochNumber = wx.TextCtrl(self.panel, -1, '10')
         self.epochNumber.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffleBuffer))
 
+        # Check-Box to activate caching samples to improve training speed
         cacheLbl = wx.StaticText(self.panel, -1, "Enable cache of dataset while reading? ")
         self.cache = wx.CheckBox(self.panel, -1, "")
         self.cache.SetValue(self.training_cfg['cache'])
 
+        # define a SpinControl define training/test rate between 10% and 90%
         splitRateLbl = wx.StaticText(self.panel, -1, "Training vs Test split rate")
         self.splitRate = wx.SpinCtrlDouble(self.panel, id=-1, min=0.1, max=0.9,
                                                           initial=self.training_cfg['split_rate'], inc=0.05)
 
-        # check box to select automatic or manual selection
+        # Path to the init-weights. Initial path if formed in the training_config_path with the name of the training
+        # config.
         initialWeigthsLbl = wx.StaticText(self.panel, -1, "Initial weigths path:", size=wx.Size(self.gui_size[0], 25))
         self.initialWeigths = wx.FilePickerCtrl(self.panel, -1)
         initial_weights_path =os.path.join(os.path.dirname(self.training_config_path), self.training_cfg['init_weights'])
@@ -83,7 +92,9 @@ class WhiskerModelTraining(BaseFrame):
             initial_weights_path = ''
         self.initialWeigths.SetPath(initial_weights_path)
 
-        # check box to select automatic or manual selection
+        # Initial datapath calculation, same as the training, it taked form the training config file or
+        # form the one in training datasets, at the given iteration.
+        # training_config_file overrides this initial value calculated.
         datapathLbl = wx.StaticText(self.panel, -1, "Dataset path:", size=wx.Size(self.gui_size[0], 25))
         self.datapath = wx.DirPickerCtrl(self.panel, -1)
         datapath_initial = os.path.join(self.project_path, 'training-datasets', self.iterations[self.iteration.GetSelection()],'contact-dataset')
@@ -95,7 +106,7 @@ class WhiskerModelTraining(BaseFrame):
         else:
             self.datapath.SetPath(self.training_cfg['datapath'])
 
-        # button to create dataset object in the trainer
+        # button to create dataset object in the trainer, also saves the training config with the given parameters.
         self.buttonSaveConfig = wx.Button(self.panel, label="Save Configuration")
         self.buttonSaveConfig.Bind(wx.EVT_BUTTON, self.onSaveConfig)
 
@@ -193,6 +204,7 @@ class WhiskerModelTraining(BaseFrame):
                 img_height=self.training_cfg['image_dim_height'],
                 img_width=self.training_cfg['image_dim_width'],
                 batch_size=self.training_cfg['batch_size'],
+                learning_rate=self.training_cfg['learning_rate'],
                 output_path=model_output_path)
         self.model_trainer.create_dataset()
         self.model_trainer.prepare_for_training(
