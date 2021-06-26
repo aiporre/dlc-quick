@@ -16,7 +16,6 @@ from gui.model_generation import ContactModelGeneration
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 
-matplotlib.use('Agg')
 print('importing deeplab cut..')
 
 print('Done')
@@ -184,8 +183,7 @@ class ExtractFrames(wx.Frame):
 
         # check box to select cropping or not
         croppingLbl = wx.StaticText(self.panel, -1, "Use cropping:")
-        self.cropping = wx.CheckBox(self.panel, -1, "")
-        self.cropping.SetValue(False)
+        self.cropping = wx.Choice(self.panel, -1, choices=['no crop', 'use from file', 'pick in gui'])
 
         # check box to select automatic or manual selection
         modeLbl = wx.StaticText(self.panel, -1, "Extraction mode:")
@@ -242,8 +240,8 @@ class ExtractFrames(wx.Frame):
         import deeplabcut as d
         mode = self.mode.GetString(self.mode.GetCurrentSelection())
         algo = self.selectionAlgo.GetString(self.selectionAlgo.GetCurrentSelection())
-
-        d.extract_frames(self.config, mode=mode, algo=algo, crop=self.cropping.GetValue(), userfeedback=False)
+        crop_options = {'no crop': False, 'use from file': True, 'pick in gui':'GUI'}
+        d.extract_frames(self.config, mode=mode, algo=algo, crop=crop_options[self.cropping.GetStringSelection()], userfeedback=False, opencv=True)
         print('Extraction...')
         self.Close()
 
