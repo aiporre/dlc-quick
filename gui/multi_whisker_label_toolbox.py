@@ -309,7 +309,7 @@ class ScrollPanel(SP.ScrolledPanel):
 class LabelWhiskersFrame(BaseFrame):
     def __init__(self, parent, config, config3d, sourceCam):
         super(LabelWhiskersFrame, self).__init__(
-            "DeepLabCut 2.2 - Multiple Individuals Labeling", parent
+            "DeepLabCut 2.2 - Multiple Animal version of Whisky Labeling", parent
         )
 
         self.statusbar.SetStatusText(
