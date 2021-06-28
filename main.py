@@ -13,8 +13,10 @@ import matplotlib
 import glob
 
 from gui.model_generation import ContactModelGeneration
+from gui.utils import parse_yaml
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
+from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
 
 print('importing deeplab cut..')
 
@@ -252,13 +254,90 @@ class CreateTraining(wx.Frame):
         self.panel = MainPanel(self)
         self.WIDTHOFINPUTS = 400
         self.config = config
+
+        cfg = parse_yaml(self.config) # parse configuration
+        self.is_multianimal = cfg.get('multianimalproject', False)
+
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Create training set")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
-        # spin control to select the number of suffles
+        # spin control to select the number of shuffles (if you need to benchmark)
+        # Widgets: configuration
         nShuffleLbl = wx.StaticText(self.panel, -1, "Number of shuffles (number of sets):")
         self.nShuffle = wx.SpinCtrl(self.panel, id=-1, min=1, max=1000, initial=1)
+        # feedback
+
+        self.deleteFeedback = wx.CheckBox(self.panel,-1, "delete feedback in the console?")
+
+        # training index
+        trainingIndexLbl = wx.StaticText(self.panel, -1 , " Index of shuffle to train selected network")
+        self.trainingIndex = wx.SpinCtrl(self.panel, id=-1, min=0, max=999, initial=0, style=wx.CB_DROPDOWN)
+        networkChoiceLbl = wx.StaticText(self.panel, -1, " Which network architecture to use? ")
+
+        net_options = [
+            "dlcrnet_ms5",
+            "resnet_50",
+            "resnet_101",
+            "resnet_152",
+            "mobilenet_v2_1.0",
+            "mobilenet_v2_0.75",
+            "mobilenet_v2_0.5",
+            "mobilenet_v2_0.35",
+            "efficientnet-b0",
+            "efficientnet-b3",
+            "efficientnet-b6",
+        ]
+
+        self.networkChoice = wx.ComboBox(self.panel, style=wx.CB_READONLY, value=net_options[0], choices=net_options)
+
+
+        # cropping definition if multianimal project is selected
+        cropSizer= None
+        if self.is_multianimal:
+            self.useCrop = wx.CheckBox(self.panel, -1, "Use crop")
+            self.useCrop.SetValue(False)
+            self.useCrop.Bind(wx.EVT_CHECKBOX, self.onCheckUseCrop)
+            cropsWidthLbl = wx.StaticText(self.panel, -1, "Crops width")
+            self.cropsWidth = wx.TextCtrl(self.panel, -1, "200")
+            self.cropsWidth.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.cropWidth))
+            self.cropsWidth.Enable(False)
+
+            cropsHeightLbl = wx.StaticText(self.panel, -1, "Crops height")
+            self.cropsHeight = wx.TextCtrl(self.panel, -1, "200")
+            self.cropsHeight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.cropLenght))
+            self.cropsHeight.Enable(False)
+
+            nCropsLbl = wx.StaticText(self.panel, -1, "Number of Crops per labeled images")
+            self.nCrops = wx.TextCtrl(self.panel, -1, "10")
+            self.nCrops.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.nCrops))
+            self.nCrops.Enable(False)
+
+            cropSizer = wx.BoxSizer(wx.VERTICAL)
+            cropSizer.Add(self.useCrop, 0, wx.ALL, 2)
+            cropSizer.Add(nCropsLbl, 0, wx.ALL, 2)
+            cropSizer.Add(self.nCrops, 0, wx.ALL, 2)
+            cropSizer.Add(cropsWidthLbl, 0, wx.ALL, 2)
+            cropSizer.Add(self.cropsWidth, 0, wx.ALL, 2)
+            cropSizer.Add(cropsHeightLbl, 0, wx.ALL, 2)
+            cropSizer.Add(self.cropsHeight, 0, wx.ALL, 2)
+
+        compareSizer = None
+        if not self.is_multianimal:
+            self.selectModelComparison = wx.CheckBox(self.panel, -1, "make model Comparison")
+            self.selectModelComparison.SetValue(False)
+            self.selectModelComparison.Bind(wx.EVT_CHECKBOX, self.onSelectModelComparision)
+            compareNumShufflesLbl = wx.StaticText(self.panel, -1 , "Specify num of shuffles in the comparison dataset")
+            self.compareNumShuffles = wx.SpinCtrl(self.panel, id=-1, min=1, max=1000, initial=1)
+            self.compareNetworkSelection = wx.CheckListBox(self.panel, -1, size= wx.Size(self.WIDTHOFINPUTS, -1), choices=net_options[1:], name="Select networks to compare: ")
+            self.compareNumShuffles.Enable(False)
+            self.compareNetworkSelection.Enable(False)
+
+            compareSizer = wx.BoxSizer(wx.VERTICAL)
+            compareSizer.Add(self.selectModelComparison, 0, wx.LEFT | wx.ALL, 2)
+            compareSizer.Add(compareNumShufflesLbl, 0, wx.LEFT | wx.ALL, 2)
+            compareSizer.Add(self.compareNumShuffles, 0, wx.LEFT | wx.ALL, 2)
+            compareSizer.Add(self.compareNetworkSelection, 0, wx.LEFT | wx.ALL, 2)
 
         # button to create dataset or datasets
         buttonCreate = wx.Button(self.panel, label="Create")
@@ -279,10 +358,25 @@ class CreateTraining(wx.Frame):
         inputSizer = wx.BoxSizer(wx.VERTICAL)
         inputSizer.Add(nShuffleLbl, 0, wx.EXPAND | wx.ALL, 10)
         inputSizer.Add(self.nShuffle, 0, wx.CENTER, 2)
+        inputSizer.Add(trainingIndexLbl, 0, wx.EXPAND | wx.ALL, 10)
+        inputSizer.Add(self.trainingIndex, 0, wx.CENTER, 2)
+        inputSizer.Add(networkChoiceLbl, 0, wx.CENTER, 2)
+        inputSizer.Add(self.networkChoice, 0, wx.CENTER, 2)
+        inputSizer.Add(self.deleteFeedback,0 , wx.CENTER, 2)
+
+        if cropSizer:
+            inputSizer.Add(wx.StaticLine(self.panel), 0,
+                           wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+            inputSizer.Add(cropSizer, 0, wx.CENTER, 2)
+        if compareSizer:
+            inputSizer.Add(wx.StaticLine(self.panel), 0,
+                           wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+            inputSizer.Add(compareSizer, 0, wx.CENTER, 2)
+
         inputSizer.Add(wx.StaticLine(self.panel), 0,
                        wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
-        inputSizer.Add(buttonCreate, 0, wx.CENTER, 2)
 
+        inputSizer.Add(buttonCreate, 0, wx.CENTER, 2)
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
 
@@ -296,8 +390,77 @@ class CreateTraining(wx.Frame):
 
     def onCreateDataset(self, event):
         import deeplabcut as d
-        d.create_training_dataset(self.config, num_shuffles=self.nShuffle.GetValue())
-        self.Close()
+        num_shuffles = self.nShuffle.GetValue()
+        config_file = d.auxiliaryfunctions.read_config(self.config)
+        trainindex = self.trainingIndex.GetValue()
+
+
+        if config_file.get("multianimalproject", False):
+            if self.useCrop.GetValue():
+                n_crops, height, width = [int(x.GetValue()) for x in [self.nCrops, self.cropsHeight, self.cropsWidth]]
+                d.cropimagesandlabels(
+                    self.config, n_crops, (height, width), userfeedback=self.deleteFeedback.GetValue()
+                )
+            d.create_multianimaltraining_dataset(
+                self.config,
+                num_shuffles,
+                Shuffles=[self.nShuffle.GetValue()],
+                net_type=self.networkChoice.GetValue(),
+            )
+        else:
+            if not self.selectModelComparison.GetValue():
+                d.create_training_dataset(
+                    self.config,
+                    num_shuffles,
+                    Shuffles=[self.nShuffle.GetValue()],
+                    userfeedback=self.deleteFeedback.GetValue(),
+                    net_type=self.networkChoice.GetValue(),
+                )
+            if self.selectModelComparison.GetValue():
+                compareNetworksList = list(self.compareNetworkSelection.GetCheckedStrings())
+                print('====>>>>>> , ', compareNetworksList)
+                d.create_training_model_comparison(
+                    self.config,
+                    trainindex=trainindex,
+                    num_shuffles=num_shuffles,
+                    userfeedback=self.deleteFeedback.GetValue(),
+                    net_types=compareNetworksList,
+                )
+    def force_numeric_int(self, event, edit):
+        keycode = event.GetKeyCode()
+        if keycode < 255:
+            # valid ASCII
+            if chr(keycode).isdigit() or keycode == 8:
+                event.Skip()
+        if keycode == 314 or keycode == 316:
+            event.Skip()
+
+    def force_numeric_float(self, event, edit):
+        raw_value = edit.GetValue().strip()
+        keycode = event.GetKeyCode()
+        if keycode < 255:
+            # valid ASCII
+            if chr(keycode).isdigit() or keycode == 8 or chr(keycode) == '.' and ('.' not in raw_value):
+                event.Skip()
+        if keycode == 314 or keycode == 316:
+            event.Skip()
+
+
+    def onCheckUseCrop(self, event):
+       if self.is_multianimal:
+           self.nCrops.Enable(self.useCrop.GetValue())
+           self.cropsWidth.Enable(self.useCrop.GetValue())
+           self.cropsHeight.Enable(self.useCrop.GetValue())
+           self.nCrops.Enable(self.useCrop.GetValue())
+           self.cropsWidth.Enable(self.useCrop.GetValue())
+           self.cropsHeight.Enable(self.useCrop.GetValue())
+
+
+    def onSelectModelComparision(self, event):
+        if not self.is_multianimal:
+            self.compareNumShuffles.Enable(self.selectModelComparison.GetValue())
+            self.compareNetworkSelection.Enable(self.selectModelComparison.GetValue())
+            self.networkChoice.Enable(not self.selectModelComparison.GetValue())
 
 
 class AddNewVideos(wx.Frame):
@@ -2245,7 +2408,10 @@ class MainFrame(wx.Frame):
         print('check labels...')
         import deeplabcut as d
         config_path = self.configPath.GetPath()
-        d.check_labels(config_path)
+        config = d.auxiliaryfunctions.read_config(config_path)
+        if config.get('multianimalproject', False):
+            d.check_labels(config_path, visualizeindividuals=True)
+        d.check_labels(config_path, visualizeindividuals=False)
         print('Done')
 
     def on_new_frame(self, event, frame_type):
@@ -2269,7 +2435,11 @@ class MainFrame(wx.Frame):
         elif frame_type == 'analyze videos':
             frame = AnalyzeVideos(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'label whiskers':
-            frame = LabelWhiskersFrame(self.GetParent(), config=self.configPath.GetPath(), imtypes=["*.png"], config3d=None, sourceCam=None)
+            config = parse_yaml(self.configPath.GetPath())
+            if config.get('multianimalproject',False):
+                frame = MultiLabelWhiskersFrame(self.GetParent(), config=self.configPath.GetPath(),config3d=None, sourceCam=None)
+            else:
+                frame = LabelWhiskersFrame(self.GetParent(), config=self.configPath.GetPath(), imtypes=["*.png"], config3d=None, sourceCam=None)
 
 
 
