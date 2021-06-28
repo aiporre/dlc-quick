@@ -1188,10 +1188,12 @@ class TrainNetwork(wx.Frame):
         d.auxiliaryfunctions.write_plainconfig(pose_config_file, pose_config)
         trainingIndex, shuffle = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
         iterationNum = int(self.iteration.GetStringSelection().split('-')[-1])
+
         if config['iteration'] != iterationNum:
             print(f'\e[32m Atention! Iteration is being set back to iteration-{iterationNum}\e[0m')
             d.auxiliaryfunctions.write_config(self.config, {'iteration': iterationNum})
-
+        print('trainingIndex: ', trainingIndex)
+        print('shuffle: ', shuffle)
         d.train_network(self.config, shuffle=shuffle, trainingsetindex=trainingIndex, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
                         saveiters=pose_config['save_iters'])
         print('Training finished')
@@ -1302,11 +1304,17 @@ class EvaluaterNetwork(wx.Frame):
         topLbl = wx.StaticText(self.panel, -1, "Evaluate network")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
         # selection of iteration:
+        cfg = parser_yaml(self.config)
         iterationLbl = wx.StaticText(self.panel, -1, "Iteration")
-        self.iteration = wx.Choice(self.panel, id=-1, choices=self.find_iterations())
+        current_iteration = 'iteration-' + str(cfg['iteration'])
+        iterations = [current_iteration]
+        iterations.extend([it for it in self.find_iterations() if it not in iterations])
+        self.iteration = wx.Choice(self.panel, id=-1, choices=iterations)
+        self.iteration.SetSelection(0)
+        shuffleNumberLbl = wx.StaticText(self.panel, -1, "Shuffles")
+        self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
+        self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
 
-        trainingIndexLbl = wx.StaticText(self.panel, -1, "Training index")
-        self.trainingIndex = wx.Choice(self.panel, id=-1, choices=self.find_training_index())
 
         plottingLbl = wx.StaticText(self.panel, -1, "Plotting")
         self.plotting = wx.CheckBox(self.panel, -1, "")
@@ -1359,6 +1367,8 @@ class EvaluaterNetwork(wx.Frame):
 
         mainSizer.Add(iterationLbl, 0, wx.EXPAND, 2)
         mainSizer.Add(self.iteration, 0, wx.EXPAND, 2)
+        mainSizer.Add(shuffleNumberLbl, 0, wx.EXPAND, 2)
+        mainSizer.Add(self.shuffleNumber, 0, wx.EXPAND, 2)
 
         # all the stuff insider the
         contentSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -1370,8 +1380,6 @@ class EvaluaterNetwork(wx.Frame):
 
         # inputSizer.Add(selectionAlgoLbl, 0, wx.EXPAND, 2)
         # inputSizer.Add(selectionAlgo, 0, wx.EXPAND, 2)
-        inputSizer.Add(trainingIndexLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.trainingIndex, 0, wx.EXPAND, 2)
         inputSizer.Add(plottingLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.plotting, 0, wx.EXPAND, 2)
         inputSizer.Add(showErrorLbl, 0, wx.EXPAND, 2)
@@ -1405,15 +1413,15 @@ class EvaluaterNetwork(wx.Frame):
         mainSizer.SetSizeHints(self)  # Main window
 
     def evaluate_network(self, event):
-        trainingIndex = float(self.trainingIndex.GetString(self.trainingIndex.GetCurrentSelection()))
         bodyParts = get_radiobutton_status(self.radioButtons)
         print(bodyParts)
 
         import deeplabcut as d
         gputouse = None if self.gpusAvailable.GetStringSelection() == 'None' else self.gpusAvailable.GetSelection()
-        trainingIndex = 0
+        shuffleNumString = self.shuffleNumber.GetStringSelection()
+        trainingIndex, shuffleNum = extractTrainingIndexShuffle(self.config, shuffleNumString )
 
-        d.evaluate_network(self.config, trainingsetindex=trainingIndex, plotting=self.plotting.GetValue(),
+        d.evaluate_network(self.config, trainingsetindex=trainingIndex, Shuffles=[shuffleNum] ,plotting=self.plotting.GetValue(),
                            show_errors=self.showError.GetValue(), comparisonbodyparts=bodyParts, gputouse=gputouse,
                            rescale=self.rescale.GetValue())
         self.Close()
@@ -1448,22 +1456,22 @@ class EvaluaterNetwork(wx.Frame):
 
     def find_iterations(self):
         '''find the iterations given a config file.'''
-        # import deeplabcut
-        # cfg = deeplabcut.auxiliaryfunctions.read_config(self.config)
-        config = parser_yaml(self.config)
+        config = parse_yaml(self.config)
         print(" evaluation results: ", os.path.join(config['project_path'], 'evaluation_results'))
         if os.path.exists(os.path.join(config['project_path'], 'evaluation_results')):
             return os.listdir(os.path.join(config['project_path'], 'evaluation_results'))
         else:
             return ['']
 
-    def find_training_index(self):
-        config = parser_yaml(self.config)
-        trainingFractions = config['TrainingFraction']
-        if len(trainingFractions) == 0:
-            return ['']
-        print('trainingFractions: ', trainingFractions, 'type: ', type(trainingFractions))
-        return [str(c) for c in trainingFractions]
+    def find_shuffles(self):
+        config = parse_yaml(self.config)
+        iteration_selection = self.iteration.GetStringSelection()
+        files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
+        return files
+
+    def onSelectIteration(self, event):
+        self.shuffleNumber.SetItems(self.find_shuffles())
+        self.shuffleNumber.SetSelection(0)
 
     def onRadioButton(self, event, source):
         if source == 'All':

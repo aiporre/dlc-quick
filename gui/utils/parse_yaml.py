@@ -63,7 +63,7 @@ def extractTrainingIndexShuffle(config, pose_config_parent):
     # THIS IS PATCH FOR A BUG IN DLC, parsing the text is the only thing this function should do, but now is fixing the config.yaml
     # trainingIndex = (trainingFactionsConfig-round(trainingIndex/100,2)).argmin()
     trainingIndex = None
-    computedFraction = round(trainingFraction / 100, 2)
+    computedFraction = float(round(trainingFraction / 100, 2))
     for i, tf in enumerate(trainingFactionsConfig):
         if computedFraction == tf:
             trainingIndex = i
@@ -71,7 +71,11 @@ def extractTrainingIndexShuffle(config, pose_config_parent):
         import deeplabcut as dlc
         trainingIndex = len(trainingFactionsConfig)
         trainingFactionsConfig.append(computedFraction)
-        dlc.auxiliaryfunctions.write_config(config, {'TrainingFraction': trainingFactionsConfig})
+        print(' {\'TrainingFraction\': trainingFactionsConfig}: ',  {'TrainingFraction': trainingFactionsConfig})
+        print(cfg['TrainingFraction'])
+        print('type(cfg[\'TrainingFraction\'][-1]) = ', type(cfg['TrainingFraction'][-1]))
+        print('type(trainingFactionsConfig[-1]) = ', type(trainingFactionsConfig[-1]))
+        dlc.auxiliaryfunctions.edit_config(config, {'TrainingFraction': trainingFactionsConfig})
 
     return trainingIndex, shuffle
 
