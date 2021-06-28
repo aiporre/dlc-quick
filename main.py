@@ -264,7 +264,8 @@ class CreateTraining(wx.Frame):
 
         # spin control to select the number of shuffles (if you need to benchmark)
         # Widgets: configuration
-        nShuffleLbl = wx.StaticText(self.panel, -1, "Number of shuffles (number of sets):")
+
+        nShuffleLbl = wx.StaticText(self.panel, -1, "Shuffle index (something like shuffle id number):")
         self.nShuffle = wx.SpinCtrl(self.panel, id=-1, min=1, max=1000, initial=1)
         # feedback
 
