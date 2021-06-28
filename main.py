@@ -935,10 +935,13 @@ class TrainNetwork(wx.Frame):
         self.multistep.InsertColumn(0, "Learning Rate", format=wx.LIST_FORMAT_CENTRE, width=0.25 * self.WIDTHOFINPUTS)
         self.multistep.InsertColumn(1, "Up to iteration...", format=wx.LIST_FORMAT_CENTRE,
                                     width=0.25 * self.WIDTHOFINPUTS)
-        line = '0.002'
-        self.multistep.InsertItem(self.listIndex, line)
-        self.multistep.SetItem(self.listIndex, 1, '5000')
-        self.listIndex += 1
+
+
+        multisteps = pose_config.get('multi_step', [['0.002', '10000']])
+        for lr, upToIter in multisteps:
+            self.multistep.InsertItem(self.listIndex, str(lr))
+            self.multistep.SetItem(self.listIndex, 1, str(upToIter))
+            self.listIndex += 1
         # location_refinementLbl = wx.StaticText(self.panel, -1, "location_refinement")
         # self.location_refinement = wx.CheckBox(self.panel, -1, "")
         # self.location_refinement.SetValue(pose_config["location_refinement"])
@@ -1014,7 +1017,8 @@ class TrainNetwork(wx.Frame):
                       wx.EXPAND | wx.TOP, 5)
         mainSizer.Add(iterationLbl, 0, wx.CENTER | wx.ALL, 2)
         mainSizer.Add(self.iteration, 0, wx.CENTER | wx.ALL, 2)
-
+        mainSizer.Add(shuffleNumberLbl, 0, wx.CENTER | wx.ALL, 2)
+        mainSizer.Add(self.shuffleNumber, 0, wx.CENTER | wx.ALL, 2)
         # all the stuff insider the
         contentSizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -1118,6 +1122,33 @@ class TrainNetwork(wx.Frame):
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
 
+    def onSelectIteration(self, event):
+        self.shuffleNumber.SetItems(self.find_shuffles())
+        self.shuffleNumber.SetSelection(0)
+        self.reloadFields()
+
+    def onSelectShuffle(self, event):
+        self.reloadFields()
+
+
+    def reloadFields(self):
+        pose_config = self.read_fields()
+
+        self.cropRatio.SetValue(str(pose_config['cropratio']))
+        self.globalScale.SetValue(str(pose_config['global_scale']))
+        self.initWeights.SetValue(str(pose_config['init_weights']))
+        self.intermediateSupervision.SetValue(pose_config['intermediate_supervision'])
+        self.intermediate_supervision_layer.SetValue(pose_config['intermediate_supervision_layer'])
+        self.max_input_size.SetValue(str(pose_config['max_input_size']))
+        self.min_input_size.SetValue(str(pose_config['min_input_size']))
+        self.mirror.SetValue(pose_config['mirror'])
+        self.net_type.SetValue(pose_config['net_type'])
+        self.pos_dist_thresh.SetValue(str(pose_config['pos_dist_thresh']))
+        self.scale_jitter_lo.SetValue(str(pose_config['scale_jitter_lo']))
+        self.scale_jitter_up.SetValue(str(pose_config['scale_jitter_up']))
+
+
+
     def onTrainNetwork(self, event):
         print('Training...')
         pose_config = self.read_fields()
@@ -1165,14 +1196,21 @@ class TrainNetwork(wx.Frame):
         config = parser_yaml(self.config)
         return os.listdir(os.path.join(config['project_path'], 'dlc-models'))
 
+
+    def find_shuffles(self):
+        config = parser_yaml(self.config)
+        numbers = []
+        iteration_selection = self.iteration.GetStringSelection()
+        files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
+        return files
+
     def read_fields(self, parse=True):
-        iteration_selection_num = self.iteration.GetCurrentSelection()
-        iteration_selection = self.iteration.GetString(iteration_selection_num)
+        iteration_selection = self.iteration.GetStringSelection()
         print('iteration_selection', iteration_selection)
         cfg = parser_yaml(self.config)
-        posefile = os.path.join(cfg['project_path'], 'dlc-models', iteration_selection,
-                                cfg['Task'] + cfg['date'] + '-trainset' + str(
-                                    int(cfg['TrainingFraction'][0] * 100)) + 'shuffle' + str(1), 'train/pose_cfg.yaml')
+        posefile = os.path.join(cfg['project_path'], 'dlc-models', iteration_selection, self.shuffleNumber.GetStringSelection(), 'train', 'pose_cfg.yaml')
+        if not os.path.exists(posefile):
+            raise FileNotFoundError(posefile)
         print('Pose file: ', posefile)
         if parse:
             return parser_yaml(posefile)
