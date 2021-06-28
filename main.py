@@ -1312,8 +1312,12 @@ class EvaluaterNetwork(wx.Frame):
         comparisionBodyPartsLbl = wx.StaticText(self.panel, -1, "Comparision body parts")
         print(config['bodyparts'])
         print(len(config['bodyparts']))
+        if config.get("multianimalproject", False):
+            bodyparts = config["multianimalbodyparts"]
+        else:
+            bodyparts = config["bodyparts"]
         comparisionBodyParts, items = self.MakeStaticBoxSizer(boxlabel='body parts',
-                                                              itemlabels=config['bodyparts'] + ['All'], type='checkBox')
+                                                              itemlabels=bodyparts + ['All'], type='checkBox')
 
         self.radioButtons = items
         self.radioButtonCurrentStatus = {}
@@ -1399,8 +1403,12 @@ class EvaluaterNetwork(wx.Frame):
         print(bodyParts)
 
         import deeplabcut as d
-        d.evaluate_network(self.config, plotting=self.plotting.GetValue(),
-                           show_errors=self.showError.GetValue(), comparisonbodyparts=bodyParts)
+        gputouse = None if self.gpusAvailable.GetStringSelection() == 'None' else self.gpusAvailable.GetSelection()
+        trainingIndex = 0
+
+        d.evaluate_network(self.config, trainingsetindex=trainingIndex, plotting=self.plotting.GetValue(),
+                           show_errors=self.showError.GetValue(), comparisonbodyparts=bodyParts, gputouse=gputouse,
+                           rescale=self.rescale.GetValue())
         self.Close()
 
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150, 25), type='block'):
