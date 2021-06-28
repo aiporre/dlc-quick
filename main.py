@@ -14,6 +14,7 @@ import glob
 
 from gui.model_generation import ContactModelGeneration
 from gui.utils import parse_yaml
+from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
@@ -1180,12 +1181,18 @@ class TrainNetwork(wx.Frame):
         pose_config['scale_jitter_up'] = float(self.scale_jitter_up.GetValue())
         # pose_config['topheight'] = int(self.topheight.GetValue())
         config = parser_yaml(self.config)
-        pose_config['project_path'] = pose_config['project_path']
+        pose_config['project_path'] = config['project_path']
         print('CONFIG POSE:')
         print(pose_config)
         import deeplabcut as d
         d.auxiliaryfunctions.write_plainconfig(pose_config_file, pose_config)
-        d.train_network(self.config, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
+        trainingIndex, shuffle = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
+        iterationNum = int(self.iteration.GetStringSelection().split('-')[-1])
+        if config['iteration'] != iterationNum:
+            print(f'\e[32m Atention! Iteration is being set back to iteration-{iterationNum}\e[0m')
+            d.auxiliaryfunctions.write_config(self.config, {'iteration': iterationNum})
+
+        d.train_network(self.config, shuffle=shuffle, trainingsetindex=trainingIndex, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
                         saveiters=pose_config['save_iters'])
         print('Training finished')
 
