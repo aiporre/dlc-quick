@@ -272,8 +272,30 @@ class CreateTraining(wx.Frame):
         self.deleteFeedback = wx.CheckBox(self.panel,-1, "delete feedback in the console?")
 
         # training index
-        trainingIndexLbl = wx.StaticText(self.panel, -1 , " Index of shuffle to train selected network")
-        self.trainingIndex = wx.SpinCtrl(self.panel, id=-1, min=0, max=999, initial=0, style=wx.CB_DROPDOWN)
+        self.listIndex = 0
+        trainingIndexLbl = wx.StaticText(self.panel, -1 , " Define the splits of training sets:")
+        self.trainingIndex = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT)
+        self.trainingIndex.InsertColumn(0, "Training index", format=wx.LIST_FORMAT_CENTRE, width= 0.25 * self.WIDTHOFINPUTS)
+        self.trainingIndex.InsertColumn(1, "Training fractions", format=wx.LIST_FORMAT_CENTRE,
+                                    width=0.25 * self.WIDTHOFINPUTS)
+        self.trainingFractions = cfg.get('TrainingFraction',[0.95])
+        for trainingFraction in self.trainingFractions:
+            self.trainingIndex.InsertItem(self.listIndex, str(self.listIndex))
+            self.trainingIndex.SetItem(self.listIndex, 1, str(trainingFraction))
+            self.listIndex +=1
+        buttonAdd = wx.Button(self.panel, label="Add fraction")
+        buttonAdd.Bind(wx.EVT_BUTTON, self.onAddStep)
+
+        buttonRemove = wx.Button(self.panel, label="Remove fraction")
+        buttonRemove.Bind(wx.EVT_BUTTON, self.onRemoveStep)
+
+        addButtonSizer = wx.BoxSizer(wx.HORIZONTAL)
+        addButtonSizer.Add(buttonAdd, 0, wx.CENTER|wx.ALL, 2)
+        addButtonSizer.Add(buttonRemove, 0, wx.CENTER | wx.ALL, 2)
+
+
+        # network architecture
+
         networkChoiceLbl = wx.StaticText(self.panel, -1, " Which network architecture to use? ")
 
         net_options = [
@@ -328,8 +350,11 @@ class CreateTraining(wx.Frame):
             self.selectModelComparison = wx.CheckBox(self.panel, -1, "make model Comparison")
             self.selectModelComparison.SetValue(False)
             self.selectModelComparison.Bind(wx.EVT_CHECKBOX, self.onSelectModelComparision)
-            compareNumShufflesLbl = wx.StaticText(self.panel, -1 , "Specify num of shuffles in the comparison dataset")
+            compareNumShufflesLbl = wx.StaticText(self.panel, -1 , "Specify num of shuffles per comparison")
             self.compareNumShuffles = wx.SpinCtrl(self.panel, id=-1, min=1, max=1000, initial=1)
+            compareTrainingIndexLbl = wx.StaticText(self.panel, -1, "Which training index for comparisons?")
+            self.compareTrainingIndex = wx.SpinCtrl(self.panel, id=-1, min=0, max=999, initial=0)
+            self.compareTrainingIndex.Enable(False)
             self.compareNetworkSelection = wx.CheckListBox(self.panel, -1, size= wx.Size(self.WIDTHOFINPUTS, -1), choices=net_options[1:], name="Select networks to compare: ")
             self.compareNumShuffles.Enable(False)
             self.compareNetworkSelection.Enable(False)
@@ -338,6 +363,8 @@ class CreateTraining(wx.Frame):
             compareSizer.Add(self.selectModelComparison, 0, wx.LEFT | wx.ALL, 2)
             compareSizer.Add(compareNumShufflesLbl, 0, wx.LEFT | wx.ALL, 2)
             compareSizer.Add(self.compareNumShuffles, 0, wx.LEFT | wx.ALL, 2)
+            compareSizer.Add(compareTrainingIndexLbl, 0, wx.LEFT | wx.ALL, 2)
+            compareSizer.Add(self.compareTrainingIndex, 0, wx.LEFT | wx.ALL, 2)
             compareSizer.Add(self.compareNetworkSelection, 0, wx.LEFT | wx.ALL, 2)
 
         # button to create dataset or datasets
@@ -361,6 +388,7 @@ class CreateTraining(wx.Frame):
         inputSizer.Add(self.nShuffle, 0, wx.CENTER, 2)
         inputSizer.Add(trainingIndexLbl, 0, wx.EXPAND | wx.ALL, 10)
         inputSizer.Add(self.trainingIndex, 0, wx.CENTER, 2)
+        inputSizer.Add(addButtonSizer, 0, wx.CENTER, 2)
         inputSizer.Add(networkChoiceLbl, 0, wx.CENTER, 2)
         inputSizer.Add(self.networkChoice, 0, wx.CENTER, 2)
         inputSizer.Add(self.deleteFeedback,0 , wx.CENTER, 2)
@@ -391,12 +419,20 @@ class CreateTraining(wx.Frame):
 
     def onCreateDataset(self, event):
         import deeplabcut as d
-        num_shuffles = self.nShuffle.GetValue()
-        config_file = d.auxiliaryfunctions.read_config(self.config)
-        trainindex = self.trainingIndex.GetValue()
+        cfg = d.auxiliaryfunctions.read_config(self.config)
 
+        if self.trainingIndex.GetItemCount()>0:
+            trainingFractions = []
+            for i in range(self.trainingIndex.GetItemCount()):
+                trainingFractions.append(float(self.trainingIndex.GetItemText(i, col=1)))
+        else:
+            trainingFractions = [0.95]
 
-        if config_file.get("multianimalproject", False):
+        d.auxiliaryfunctions.edit_config(self.config, {'TrainingFraction': trainingFractions})
+
+        if cfg.get("multianimalproject", False):
+            num_shuffles = self.nShuffle.GetValue()
+
             if self.useCrop.GetValue():
                 n_crops, height, width = [int(x.GetValue()) for x in [self.nCrops, self.cropsHeight, self.cropsWidth]]
                 d.cropimagesandlabels(
@@ -410,6 +446,8 @@ class CreateTraining(wx.Frame):
             )
         else:
             if not self.selectModelComparison.GetValue():
+                num_shuffles = self.nShuffle.GetValue()
+
                 d.create_training_dataset(
                     self.config,
                     num_shuffles,
@@ -419,7 +457,16 @@ class CreateTraining(wx.Frame):
                 )
             if self.selectModelComparison.GetValue():
                 compareNetworksList = list(self.compareNetworkSelection.GetCheckedStrings())
-                print('====>>>>>> , ', compareNetworksList)
+                num_shuffles = self.compareNumShuffles.GetValue()
+                trainindex = self.compareTrainingIndex.GetValue()
+
+                print('inputs: ')
+                print('self.config: ', self.config)
+                print('trainindex: ', trainindex)
+                print('num_shuffles:', num_shuffles)
+                print('userfeedback: ', self.deleteFeedback.GetValue())
+                print('net_types: ', compareNetworksList)
+
                 d.create_training_model_comparison(
                     self.config,
                     trainindex=trainindex,
@@ -460,9 +507,48 @@ class CreateTraining(wx.Frame):
     def onSelectModelComparision(self, event):
         if not self.is_multianimal:
             self.compareNumShuffles.Enable(self.selectModelComparison.GetValue())
+            self.compareTrainingIndex.Enable(self.selectModelComparison.GetValue())
             self.compareNetworkSelection.Enable(self.selectModelComparison.GetValue())
+            self.nShuffle.Enable(not self.selectModelComparison.GetValue())
             self.networkChoice.Enable(not self.selectModelComparison.GetValue())
 
+    def onAddStep(self, event):
+        def onOk(event, parent, frame):
+            line = frame.fractionRate.GetValue()
+            parent.trainingIndex.InsertItem(self.listIndex, str(parent.listIndex))
+            parent.trainingIndex.SetItem(self.listIndex, 1, line)
+            parent.listIndex += 1
+            frame.Close()
+
+        dialog = wx.Dialog(self, id=-1, title="Add new training fraction")
+        dialog.Bind(wx.EVT_BUTTON, lambda event: onOk(event, self, dialog), id=wx.ID_OK)
+        mainSizerDialog = wx.BoxSizer(wx.VERTICAL)
+        field1Sizer = wx.BoxSizer(wx.HORIZONTAL)
+        lrLbl = wx.StaticText(dialog, -1, "training fraction rate")
+        dialog.fractionRate = wx.TextCtrl(dialog, -1, '0.95')
+        dialog.fractionRate.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, dialog.fractionRate))
+        field1Sizer.Add(lrLbl, 2, wx.CENTER | wx.ALL, 2)
+        field1Sizer.Add(dialog.fractionRate, 2, wx.CENTER | wx.ALL, 2)
+
+        buttonsizer = dialog.CreateButtonSizer(wx.CANCEL | wx.OK)
+        mainSizerDialog.Add(field1Sizer, 0, wx.CENTER | wx.ALL, 2)
+        mainSizerDialog.Add(buttonsizer, 0, wx.CENTER | wx.ALL, 2)
+        dialog.SetSizer(mainSizerDialog)
+        dialog.ShowModal()
+        dialog.Destroy()
+
+    def onRemoveStep(self, event):
+        if self.listIndex == 0:
+            print('Nothing to remove')
+            return
+        item_id = self.trainingIndex.GetFirstSelected(self)
+        if item_id == -1:
+            item_id = self.listIndex - 1
+
+        print("removing entry : ", item_id)
+        self.trainingIndex.DeleteItem(item_id)
+        # update listIndex
+        self.listIndex = self.listIndex - 1
 
 class AddNewVideos(wx.Frame):
     def __init__(self, parent, title='Add new videos', config=None):
@@ -762,13 +848,19 @@ class TrainNetwork(wx.Frame):
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # choice iteration from configuration file
-        config = parser_yaml(self.config)
+        cfg = parser_yaml(self.config)
         iterationLbl = wx.StaticText(self.panel, -1, "Iteration")
-        current_iteration = 'iteration-' + str(config['iteration'])
-        self.iteration = wx.Choice(self.panel, id=-1, choices=[current_iteration] + self.find_iterations())
+        current_iteration = 'iteration-' + str(cfg['iteration'])
+        iterations = [current_iteration]
+        iterations.extend([it for it in self.find_iterations() if it not in iterations])
+        self.iteration = wx.Choice(self.panel, id=-1, choices=iterations)
         self.iteration.SetSelection(0)
-        pose_config = self.read_fields()
+        shuffleNumberLbl = wx.StaticText(self.panel, -1, "Shuffles")
+        self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
 
+        pose_config = self.read_fields()
+        self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
+        self.shuffleNumber.Bind(wx.EVT_CHOICE, self.onSelectShuffle)
         # # default fields from the pose_cfg.yaml file:
         # all_jointsLbl = wx.StaticText(self.panel, -1, "All joints")
         # all_joints = BlockWindow(self.panel,-1,label=str(pose_config['all_joints']))
