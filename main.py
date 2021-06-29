@@ -1314,6 +1314,7 @@ class EvaluaterNetwork(wx.Frame):
         self.iteration.SetSelection(0)
         shuffleNumberLbl = wx.StaticText(self.panel, -1, "Shuffles")
         self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
+        self.shuffleNumber.SetSelection(0)
         self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
 
 
