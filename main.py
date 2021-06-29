@@ -2,6 +2,7 @@ import subprocess
 import webbrowser
 from pathlib import Path
 
+import pandas as pd
 import wx
 import wx.grid
 from blockwindow import BlockWindow
@@ -1349,13 +1350,21 @@ class EvaluaterNetwork(wx.Frame):
         self.rescale = wx.CheckBox(self.panel, -1, "")
         self.rescale.SetValue(False)
 
+        snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot (you can do that manually in the config.yaml)")
+        self.snapshotindex = wx.TextCtrl(self.panel, -1, "-1")
+
         # box of results:
         summaryLbl = wx.StaticText(self.panel, -1, "summaryLbl")
         self.summary = self.generate_summary()
 
         # button to evaluate netwrok
-        buttonExtract = wx.Button(self.panel, label="Evaluate")
-        buttonExtract.Bind(wx.EVT_BUTTON, self.evaluate_network)
+        buttonEvaluate = wx.Button(self.panel, label="Evaluate")
+        buttonEvaluate.Bind(wx.EVT_BUTTON, self.evaluate_network)
+        buttonCollect = wx.Button(self.panel, label="Collect results all")
+        buttonCollect.Bind(wx.EVT_BUTTON, self.generate_collected_summary_csv)
+
+        buttonConfig = wx.Button(self.panel, label="Write snapshot to config.yaml")
+        buttonConfig.Bind(wx.EVT_BUTTON, self.onConfigSnapshot)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1377,7 +1386,7 @@ class EvaluaterNetwork(wx.Frame):
         inputSizer = wx.BoxSizer(wx.VERTICAL)
         inputSizer2 = wx.BoxSizer(wx.VERTICAL)
         inputSizer3 = wx.BoxSizer(wx.VERTICAL)
-
+        buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
         # inputSizer.Add(selectionAlgoLbl, 0, wx.EXPAND, 2)
         # inputSizer.Add(selectionAlgo, 0, wx.EXPAND, 2)
         inputSizer.Add(plottingLbl, 0, wx.EXPAND, 2)
@@ -1387,24 +1396,30 @@ class EvaluaterNetwork(wx.Frame):
 
         inputSizer2.Add(comparisionBodyPartsLbl, 0, wx.EXPAND, 2)
         inputSizer2.Add(comparisionBodyParts, 0, wx.EXPAND, 2)
+        inputSizer2.Add(snapshotindexLbl, 0, wx.ALIGN_LEFT | wx.ALL, 2 )
+        inputSizer2.Add(self.snapshotindex, 0, wx.ALIGN_LEFT | wx.ALL, 2)
 
         inputSizer3.Add(gpusAvailableLbl, 0, wx.EXPAND, 2)
         inputSizer3.Add(self.gpusAvailable, 0, wx.EXPAND, 2)
         inputSizer3.Add(rescaleLbl, 0, wx.EXPAND, 2)
         inputSizer3.Add(self.rescale, 0, wx.EXPAND, 2)
 
-        inputSizer2.Add(buttonExtract)
-
+        buttonSizer.Add(buttonEvaluate, 0, wx.CENTER | wx.ALL, 4)
+        buttonSizer.Add(buttonCollect, 0, wx.CENTER | wx.ALL, 4)
+        buttonSizer.Add(buttonConfig, 0, wx.CENTER |  wx.ALL, 4)
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
         contentSizer.Add(inputSizer3, 0, wx.ALL, 10)
+
         # contentSizer.Add(buttonSizer,0,wx.ALL, 10)
 
         # adding to the main sizer all the two groups
         mainSizer.Add(summaryLbl, 0, wx.EXPAND | wx.ALL, 2)
         mainSizer.Add(self.summary, 0, wx.ALL, 2)
         mainSizer.Add(contentSizer, 0, wx.TOP | wx.EXPAND, 15)
+        mainSizer.Add(buttonSizer, 0, wx.BOTTOM | wx.CENTER, 15)
+
         # mainSizer.Add(rightSizer, 0, wx.ALL, 10)
 
         # sizer fit and fix
@@ -1480,26 +1495,85 @@ class EvaluaterNetwork(wx.Frame):
             self.radioButtons['All'].SetValue(True)
         else:
             self.radioButtons['All'].SetValue(False)
+    def onConfigSnapshot(self, event):
+        import deeplabcut as dlc
+        snapshotindex = self.snapshotindex.GetValue()
+        if snapshotindex.isdigit() or snapshotindex == 'all' or snapshotindex == '-1':
+            if snapshotindex == '-1':
+                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': -1})
+            elif snapshotindex == 'all':
+                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': 'all'})
+            else:
+                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': int(snapshotindex)})
+        else:
+            print('Snapshot index has incorrect value. Valids are : \'numbers\' e.g. 800, \'all\' or \'-1\'')
+
+    def generate_collected_summary_csv(self, event):
+        cfg = parse_yaml(self.config)
+        path_to_csv = os.path.join(cfg['project_path'], 'evaluation-results',
+                                       'summary-all-results.csv')
+        summary = None
+        for f in Path(os.path.join(cfg['project_path'], 'evaluation-results')).rglob('DLC*.csv'):
+            fname = f.name
+            net_type = fname.split('_')[1]
+            snapshot = fname.split('_')[-1]
+            snapshot = snapshot[:snapshot.index('-results')]
+            results = pd.read_csv(f.resolve().absolute(), index_col=0)
+            results['net_type'] = [net_type] * len(results.index)
+            results['snapshot'] = ['snapshot-' + snapshot] * len(results.index)
+            results['iteration'] = [f.parent.parent.name] * len(results.index)
+
+
+            if summary is None:
+                summary = results
+            else:
+                summary.append(results, ignore_index=True)
+        summary.to_csv(path_to_csv)
+        print('Summary of all files generated in :', path_to_csv,'\n \[\033[32m\]USE THIS SUMMARY TO CONFIGURE YOUR CONFIG.YAML\[\033[m\]')
 
     def generate_summary(self):
+
+        # READING VALUES:
+        cfg = parse_yaml(self.config)
+        iteration_selection = self.iteration.GetStringSelection()
+        # for example: "[proj-path]/evaluation-results/iteration-0/CombinedEvaluation-results.csv"
+        try:
+            path_to_csv = os.path.join(cfg['project_path'], 'evaluation-results', iteration_selection, 'CombinedEvaluation-results.csv')
+            results = pd.read_csv(path_to_csv, index_col=0)
+            columns = results.columns
+        except FileNotFoundError as e:
+            print(e)
+            print('Making empty results table')
+            columns = ['Training iterations', '%Training dataset', 'Shuffle number', 'Train error(px)',
+                       'Test error(px)',
+                       'p-cutoff', 'used', 'Train error with p-cutoff', 'Test error with p-cutoff']
+            results = None
         # Create a wxGrid object
         grid = wx.grid.Grid(self.panel, -1)
 
         # Then we call CreateGrid to set the dimensions of the grid
-        columns = ['Training iterations', '%Training dataset', 'Shuffle number', 'Train error(px)', 'Test error(px)',
-                   'p-cutoff', 'used', 'Train error with p-cutoff', 'Test error with p-cutoff']
+
         grid.CreateGrid(1, len(columns))
         for i, c in enumerate(columns):
             grid.SetColLabelValue(i, c)
         grid.SetRowLabelSize(0)
-        # READING VALUES:
-        iteration_selection_num = self.iteration.GetCurrentSelection()
-        iteration_selection = self.iteration.GetString(iteration_selection_num)
-        cfg = parser_yaml(self.config)
-        path_to_csv = os.path.join(cfg['project_path'], 'dlc-models', iteration_selection,
-                                   cfg['Task'] + cfg['date'] + '-trainset' + str(
-                                       int(cfg['TrainingFraction'][0] * 100)) + 'shuffle' + str(1),
-                                   'train/pose_cfg.yaml')
+
+        if results is not None:
+            print('results.ndim = ', results.ndim)
+            for j, row in results.iterrows():
+                for i, c in enumerate(columns):
+                    try:
+                        float(str(row[c]))
+                        grid.SetColFormatFloat(j, i, 2)
+                    except:
+                        pass
+                    grid.SetCellValue(j, i, str(row[c]))
+                    grid.SetReadOnly(j,i)
+                print('grid.GetNumberRows() = ', grid.GetNumberRows())
+                if j+1 == grid.GetNumberRows() and j+1< len(results):
+                    grid.AppendRows()
+
+
 
         # # And set grid cell contents as strings
         # grid.SetCellValue(0, 0, 'wxGrid is good')
