@@ -55,6 +55,8 @@ else:
 print('VIDEO PATHH!!!!!!!!!!!!!', video)
 #config path definition
 config_path = os.path.join(basepath, task, 'config.yaml')
+if not os.path.exists():
+    raise FileNotFoundError("File {} not found. Check that taks and working directory actually contains a project.".format(config_path))
 print('config path: ', config_path)
 
 # load project
