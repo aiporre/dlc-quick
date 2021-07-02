@@ -31,6 +31,12 @@ class ContactDataset:
         self.labels_path = labels_path
         self.video_path = video_path
         self.dest_path = dest_path
+        if not os.path.exists(self.dest_path):
+            os.makedirs(dest_path, exist_ok=True)
+        if labels_path.endswith('h5'):
+            df = pd.read_hdf(labels_path)
+            labels_path = labels_path.replace(".h5", ".csv")
+            df.to_csv(labels_path)
         self.data = pd.read_csv(labels_path)
         # first extract body parts  nested table
         self.body_parts = self.data.iloc[0].tolist()[1:][::3]
@@ -53,7 +59,8 @@ class ContactDataset:
 
         # get whisker labels
 
-        self.whisker_labels = list(set([''.join(i for i in bp if not i.isdigit()) for bp in self.body_parts if bp.startswith('w')]))
+        # self.whisker_labels = list(set([''.join(i for i in bp if not i.isdigit()) for bp in self.body_parts if bp.startswith('w')]))
+        self.whisker_labels = list(set([''.join(i for i in bp if not i.isdigit()) for bp in self.body_parts if bp != 'nose']))
         self.whisker_labels.sort()
         def get_num_items(body_parts, whisker_label):
             print('body parts: ' , body_parts)
@@ -91,7 +98,7 @@ class ContactDataset:
         whisker = self.get_whisker(whisker=whisker_label)
         for i in range(whisker.index.values.max()):
             whisker_at_n = self.get_whisker_at(whisker, i)
-            if len(whisker_at_n) == 10:
+            if len(whisker_at_n) >= 5:
                 interesting_frames.append(i)
         return interesting_frames
 
@@ -101,7 +108,7 @@ class ContactDataset:
         whisker = self.get_whisker(whisker=whisker_label)
         for i in range(whisker.index.values.max()):
             whisker_at_n = self.get_whisker_at(whisker, i)
-            if len(whisker_at_n) == 10:
+            if len(whisker_at_n) >= 5:
                 # print('at ', i, ' whisker ', whisker_label, ' has ', len(whisker_at_n))
                 interesting_frames.append(i)
         return [j for j in range(video_length) if j not in interesting_frames]
