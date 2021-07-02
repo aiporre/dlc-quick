@@ -1,5 +1,7 @@
 import subprocess
 import webbrowser
+
+from deeplabcut.utils import skeleton
 from pathlib import Path
 
 import pandas as pd
@@ -372,7 +374,8 @@ class CreateTraining(wx.Frame):
         # button to create dataset or datasets
         buttonCreate = wx.Button(self.panel, label="Create")
         buttonCreate.Bind(wx.EVT_BUTTON, self.onCreateDataset)
-        # btn.Bind(wx.EVT_BUTTON, self.add_line)
+        buttonSkeleton = wx.Button(self.panel, label="Create Skeleton")
+        buttonSkeleton.Bind(wx.EVT_BUTTON, self.build_skeleton)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -383,6 +386,7 @@ class CreateTraining(wx.Frame):
                       wx.EXPAND | wx.TOP, 5)
         # all the stuff insider the
         contentSizer = wx.BoxSizer(wx.HORIZONTAL)
+        buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
@@ -407,12 +411,14 @@ class CreateTraining(wx.Frame):
         inputSizer.Add(wx.StaticLine(self.panel), 0,
                        wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
 
-        inputSizer.Add(buttonCreate, 0, wx.CENTER, 2)
+        buttonSizer.Add(buttonSkeleton, 0, wx.CENTER, 2)
+        buttonSizer.Add(buttonCreate, 0, wx.CENTER, 2)
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
 
         # adding to the main sizer all the two groups
         mainSizer.Add(contentSizer, 0, wx.TOP | wx.EXPAND, 15)
+        mainSizer.Add(buttonSizer, 0, wx.TOP | wx.CENTER | wx.BOTTOM, 15)
 
         # sizer fit and fix
         self.panel.SetSizer(mainSizer)
@@ -476,6 +482,10 @@ class CreateTraining(wx.Frame):
                     userfeedback=self.deleteFeedback.GetValue(),
                     net_types=compareNetworksList,
                 )
+
+    def build_skeleton(self, event):
+        skeleton.SkeletonBuilder(self.config)
+
     def force_numeric_int(self, event, edit):
         keycode = event.GetKeyCode()
         if keycode < 255:
@@ -1211,7 +1221,7 @@ class TrainNetwork(wx.Frame):
         config = parser_yaml(self.config)
         numbers = []
         iteration_selection = self.iteration.GetStringSelection()
-        files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
+        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection)) if 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
         return files
 
     def read_fields(self, parse=True):
