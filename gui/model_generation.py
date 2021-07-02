@@ -223,7 +223,7 @@ class ContactModelGeneration(BaseFrame):
         pairs = []
         for video_path in videos:
             if not video_path.endswith(self.videoType.GetValue()):
-                print('skipping video_path: ', video_path)
+                print('Doesn\'t end in ', self.videoType.GetValue(), 'skipping video_path: ', video_path)
                 continue
             video_dir_path = os.path.dirname(video_path)
             files = os.listdir(video_dir_path)
@@ -234,8 +234,9 @@ class ContactModelGeneration(BaseFrame):
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
                 snapshot_index = get_snapshot_index(self.config, self.shuffle.GetValue()).split("-")[1]
-                if f_name.startswith(v_name) and f_name.endswith(
-                        'shuffle' + str(self.shuffle.GetValue()) + '_' + str(snapshot_index) + ".csv"):
+                shuffle_shapshot_index = 'shuffle' + str(self.shuffle.GetValue()) + '_' + str(snapshot_index)
+
+                if f_name.startswith(v_name) and f_name.endswith(shuffle_shapshot_index + ".csv") or f_name.endswith(shuffle_shapshot_index + ".h5"):
                     labels_path = os.path.join(video_dir_path, f)
                     break
             # labels_path coulnd be found then stop generation.
