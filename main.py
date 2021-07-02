@@ -859,7 +859,7 @@ class TrainNetwork(wx.Frame):
         self.iteration.SetSelection(0)
         shuffleNumberLbl = wx.StaticText(self.panel, -1, "Shuffles")
         self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
-
+        self.shuffleNumber.SetSelection(0)
         pose_config = self.read_fields()
         self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
         self.shuffleNumber.Bind(wx.EVT_CHOICE, self.onSelectShuffle)
@@ -1528,7 +1528,7 @@ class EvaluaterNetwork(wx.Frame):
             if summary is None:
                 summary = results
             else:
-                summary.append(results, ignore_index=True)
+                summary = summary.append(results, ignore_index=True)
         summary.to_csv(path_to_csv)
         print('Summary of all files generated in :', path_to_csv,'\n \[\033[32m\]USE THIS SUMMARY TO CONFIGURE YOUR CONFIG.YAML\[\033[m\]')
 
