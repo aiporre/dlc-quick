@@ -87,9 +87,11 @@ if args.snapshot is not None:
                           'iteration-'+str(iteration),
                           cfg['Task'] + cfg['date'] + '-trainset' + str(int(cfg['TrainingFraction'][training_index] * 100)) + 'shuffle' + str(shuffle),
                           'train')
+    train_path = os.path.abspath(train_path)
     posefile = os.path.join(train_path,'pose_cfg.yaml')
+    print('pose file : ', posefile)
     DLC_config=deeplabcut.auxiliaryfunctions.read_plainconfig(posefile)
-    DLC_config['init_weights'] = os.path.join(train_path,args.snapshot)
+    DLC_config['init_weights'] = args.snapshot #os.path.join(train_path,args.snapshot)
     deeplabcut.auxiliaryfunctions.write_plainconfig(posefile,DLC_config)
 
 
