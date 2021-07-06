@@ -57,6 +57,8 @@ elif os.path.exists(videoname) and os.path.isdir(videoname):
         video.append(os.path.join(videoname, v))
 else:
     raise FileNotFoundError('File {} not found.'.format(videoname))
+
+video = [os.path.abspath(v) for v in video]
 print('VIDEO PATHH!!!!!!!!!!!!!', video)
 
 # finds config_path
