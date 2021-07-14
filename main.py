@@ -2279,6 +2279,7 @@ class AnalyzeVideos(wx.Frame):
 
         listOrPathLbl = wx.StaticText(self.panel, -1, "Use list or path?")
         self.listOrPath = wx.Choice(self.panel, id=-1, choices=['target videos path', 'target videos list'])
+        self.listOrPath.SetSelection(0)
 
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
         self.shuffle = wx.TextCtrl(self.panel, -1, "1")
@@ -2290,10 +2291,11 @@ class AnalyzeVideos(wx.Frame):
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".mp4")
+        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
 
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
-        self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'])  # +get_available_gpus()
+        self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None']  + get_available_gpus())
+        self.gpusAvailable.SetSelection(0)
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
