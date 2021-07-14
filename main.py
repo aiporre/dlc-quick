@@ -2346,10 +2346,15 @@ class AnalyzeVideos(wx.Frame):
 
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
-        # inputSizer.Add(configPathLbl, 0, wx.EXPAND, 2)
-        # inputSizer.Add(configPath, 0, wx.EXPAND, 2)
-        inputSizer.Add(targetVideosLbl, 0, wx.EXPAND, 2)
-        inputSizer.Add(self.targetVideos, 0, wx.EXPAND, 2)
+        targetVideosSizer = wx.BoxSizer(wx.VERTICAL)
+
+
+        targetVideosSizer.Add(targetVideosLbl, 0, wx.EXPAND, 2)
+        targetVideosSizer.Add(self.targetVideos, 0, wx.EXPAND, 2)
+        targetVideosSizer.Add(videoTypeLbl, 0, wx.LEFT | wx.ALL, 2)
+        targetVideosSizer.Add(self.videoType, 0, wx.LEFT | wx.ALL, 2)
+
+        inputSizer.Add(targetVideosSizer, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(videosListLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.videosList, 0, wx.EXPAND, 2)
 
@@ -2358,8 +2363,6 @@ class AnalyzeVideos(wx.Frame):
         line1.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.videoType, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
 
