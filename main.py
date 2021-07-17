@@ -101,6 +101,8 @@ def get_radiobutton_status(radiobuttons):
     else:
         return [k for k, v in status.items() if v and not k == 'All']
 
+def paco():
+    e
 
 class CreateTrainingSet(wx.Frame):
     def __init__(self, parent, title='Create training set', config=None, *args, **kw):
@@ -2405,10 +2407,14 @@ class AnalyzeVideos(wx.Frame):
 
         import deeplabcut as d
         print("Videos to analyze: ", videos)
-        d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
-                         shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
-                         destfolder=destfolder)
+        try:
 
+            d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
+                             shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
+                             destfolder=destfolder)
+        except IndexError as e:
+            print(e)
+            print('Snapshot index is not correct. Did you train your network? Select a correct Snapshot Index in the config.yaml or in the evaluation window in the main menu.')
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
                                style=wx.FD_DEFAULT_STYLE | wx.FD_FILE_MUST_EXIST)  # wx.FD_FILE_MUST_EXIST
