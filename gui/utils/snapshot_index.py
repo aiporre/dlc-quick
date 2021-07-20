@@ -19,8 +19,7 @@ import numpy as np
 from deeplabcut import auxiliaryfunctions
 from deeplabcut.pose_estimation_tensorflow import load_config
 
-
-def get_snapshot_index(config_path, shuffle, trainingsetindex=0, modelprefix=""):
+def get_snapshots(config_path, shuffle, trainingsetindex=0, modelprefix=""):
     '''
     Read snapshot index from config path and parse actual index. if snapshotindes='all' then it is jused the last one.
 
@@ -66,6 +65,25 @@ def get_snapshot_index(config_path, shuffle, trainingsetindex=0, modelprefix="")
             % (shuffle, shuffle)
         )
 
+    return Snapshots
+
+
+
+
+def get_snapshot_index(config_path, shuffle, trainingsetindex=0, modelprefix=""):
+    '''
+    Read snapshot index from config path and parse actual index. if snapshotindes='all' then it is jused the last one.
+
+    :param config_path: path to the config.yaml of the dlc project. Full path.
+    :param shuffle: index of shuffle i.e. training dataset
+    :param trainingsetindex: Integer specifying which TrainingsetFraction to use. By default the first (note that TrainingFraction is a list in config.yaml).
+    :param modelprefix:
+    :return:
+    '''
+    # get all snapshots (eg. [snapshot-3, snapshot-9, ..])
+    Snapshots = get_snapshots(config_path, shuffle, trainingsetindex, modelprefix)
+
+    cfg = auxiliaryfunctions.read_config(config_path)
     if cfg["snapshotindex"] == "all":
         print(
             "Snapshotindex is set to 'all' in the config.yaml file. Running video analysis with all snapshots is very costly! Use the function 'evaluate_network' to choose the best the snapshot. For now, changing snapshot index to -1!"
