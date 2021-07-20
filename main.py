@@ -18,9 +18,11 @@ import glob
 from gui.model_generation import ContactModelGeneration
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
+from gui.utils.snapshot_index import get_snapshots
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
+
 
 print('importing deeplab cut..')
 
@@ -1328,6 +1330,7 @@ class EvaluaterNetwork(wx.Frame):
         self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
         self.shuffleNumber.SetSelection(0)
         self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
+        self.shuffleNumber.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
 
 
         plottingLbl = wx.StaticText(self.panel, -1, "Plotting")
@@ -1363,8 +1366,10 @@ class EvaluaterNetwork(wx.Frame):
         self.rescale = wx.CheckBox(self.panel, -1, "")
         self.rescale.SetValue(False)
 
-        snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot (you can do that manually in the config.yaml)")
-        self.snapshotindex = wx.TextCtrl(self.panel, -1, "-1")
+        snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot")
+
+        self.snapshots = self.find_snapshots()
+        self.snapshotindex = wx.Choice(self.panel, -1, choices=self.snapshots)
 
         # box of results:
         summaryLbl = wx.StaticText(self.panel, -1, "summaryLbl")
@@ -1497,9 +1502,20 @@ class EvaluaterNetwork(wx.Frame):
         files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
         return files
 
+    def find_snapshots(self):
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest']
+
+
     def onSelectIteration(self, event):
         self.shuffleNumber.SetItems(self.find_shuffles())
         self.shuffleNumber.SetSelection(0)
+        self.onSelectShuffleNumber(None)
+
+    def onSelectShuffleNumber(self, event):
+        self.snapshots = self.find_snapshots()
+        self.snapshotindex.SetItems(self.snapshots)
+        self.snapshotindex.SetSelection(0)
 
     def onRadioButton(self, event, source):
         if source == 'All':
@@ -1510,16 +1526,19 @@ class EvaluaterNetwork(wx.Frame):
             self.radioButtons['All'].SetValue(False)
     def onConfigSnapshot(self, event):
         import deeplabcut as dlc
-        snapshotindex = self.snapshotindex.GetValue()
-        if snapshotindex.isdigit() or snapshotindex == 'all' or snapshotindex == '-1':
-            if snapshotindex == '-1':
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': -1})
-            elif snapshotindex == 'all':
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': 'all'})
-            else:
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': int(snapshotindex)})
-        else:
-            print('Snapshot index has incorrect value. Valids are : \'numbers\' e.g. 800, \'all\' or \'-1\'')
+        snapshotindex = self.snapshotindex.GetSelection()
+        if self.snapshotindex.GetStringSelection() == 'latest':
+            snapshotindex = -1
+        dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': snapshotindex})
+        # if snapshotindex.isdigit() or snapshotindex == 'all' or snapshotindex == '-1':
+        #     if snapshotindex == '-1':
+        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': -1})
+        #     elif snapshotindex == 'all':
+        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': 'all'})
+        #     else:
+        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': int(snapshotindex)})
+        # else:
+        #     print('Snapshot index has incorrect value. Valids are : \'numbers\' e.g. 800, \'all\' or \'-1\'')
 
     def generate_collected_summary_csv(self, event):
         cfg = parse_yaml(self.config)

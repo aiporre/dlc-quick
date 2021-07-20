@@ -64,7 +64,8 @@ def get_snapshots(config_path, shuffle, trainingsetindex=0, modelprefix=""):
             "Snapshots not found! It seems the dataset for shuffle %s has not been trained/does not exist.\n Please train it before using it to analyze videos.\n Use the function 'train_network' to train the network for shuffle %s."
             % (shuffle, shuffle)
         )
-
+    increasing_indices = np.argsort([int(m.split("-")[1]) for m in Snapshots])
+    Snapshots = Snapshots[increasing_indices]
     return Snapshots
 
 
@@ -92,8 +93,4 @@ def get_snapshot_index(config_path, shuffle, trainingsetindex=0, modelprefix="")
     else:
         snapshotindex = cfg["snapshotindex"]
 
-    increasing_indices = np.argsort([int(m.split("-")[1]) for m in Snapshots])
-    Snapshots = Snapshots[increasing_indices]
-
     return Snapshots[snapshotindex]
-
