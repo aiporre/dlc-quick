@@ -98,7 +98,7 @@ if args.snapshot is not None:
 
 
 if args.train == 'y':
-    deeplabcut.train_network(config_path, shuffle=1, displayiters=2, saveiters=100, maxiters=args.maxiters)
+    deeplabcut.train_network(config_path, shuffle=shuffle, displayiters=2, saveiters=100, maxiters=args.maxiters)
 print('training done.')
 
 # analyzing video

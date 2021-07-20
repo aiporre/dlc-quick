@@ -1613,8 +1613,10 @@ class EvaluaterNetwork(wx.Frame):
 
 
 class FilterPredictions(wx.Frame):
-    def __init__(self, parent, title='filter predictions', config=None):
+    def __init__(self, parent, title='filter predictions', config=None, videos=[]):
+        assert len(videos)>0, 'No videos selected, please input which videos you want to analyze. Check videos_path and video type, or add videos to your video list'
         super(FilterPredictions, self).__init__(parent, title=title, size=(640, 500))
+
         self.panel = MainPanel(self)
         self.config = config
         self.WIDTHOFINPUTS = 400
@@ -1624,9 +1626,9 @@ class FilterPredictions(wx.Frame):
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # input test to set the working directory
-        targetVideosLbl = wx.StaticText(self.panel, -1, "Video to filter:", size=wx.Size(self.WIDTHOFINPUTS, 25))
-        self.targetVideos = wx.FilePickerCtrl(self.panel, -1)
+        self.targetVideos = videos
 
+        # FIXME: Shuffle should be 1765 from window parent
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
         self.shuffle = wx.TextCtrl(self.panel, -1, "1")
         self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
@@ -1656,12 +1658,12 @@ class FilterPredictions(wx.Frame):
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, "avi")
+        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
 
         filterTypeLbl = wx.StaticText(self.panel, -1, "Filter type:")
         self.filterType = wx.Choice(self.panel, id=-1, choices=['arima', 'median'])
 
-        destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder (csv and h5 files will created there):", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
 
         buttonFilter = wx.Button(self.panel, label="Filter")
@@ -1674,8 +1676,6 @@ class FilterPredictions(wx.Frame):
         mainSizer.Add(topLbl, 0, wx.ALL, 5)
         mainSizer.Add(wx.StaticLine(self.panel), 0,
                       wx.EXPAND | wx.TOP, 5)
-        mainSizer.Add(targetVideosLbl, 0, wx.EXPAND, 2)
-        mainSizer.Add(self.targetVideos, 0, wx.EXPAND, 2)
         mainSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
         mainSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
 
@@ -1720,12 +1720,13 @@ class FilterPredictions(wx.Frame):
         mainSizer.SetSizeHints(self)
 
     def onFilter(self, event):
+        print('Filtering video(s): ')
         filterType = self.filterType.GetString(self.filterType.GetCurrentSelection())
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
-        print("Input video: ", self.targetVideos.GetPath())
+        print("Input video: ", self.targetVideos)
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.filterpredictions(self.config, [self.targetVideos.GetPath()], videotype=self.videoType.GetValue(),
+        d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
                             shuffle=int(self.shuffle.GetValue()), filtertype=filterType,
                             windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
                             ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
@@ -1889,7 +1890,12 @@ class LabelPredictions(wx.Frame):
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
         self.videoType = wx.TextCtrl(self.panel, -1, "avi")
 
-        bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+        cfg = parse_yaml(self.config)
+        if cfg.get('multianimalproject', False):
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+                                                          itemlabels=config['multianimalbodyparts'] + ['All'], type='checkBox')
+        else:
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
                                                       itemlabels=config['bodyparts'] + ['All'], type='checkBox')
         self.radioButtons = items
         self.radioButtonCurrentStatus = {}
@@ -2472,7 +2478,12 @@ class AnalyzeVideos(wx.Frame):
             print('new frame not specified in button!! ')
             return
         elif frame_type == 'filter predictions':
-            frame = FilterPredictions(self.GetParent(), config=self.config)
+            if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
+                videos = self.targetVideos.GetPath()
+            else:  # 'target videos list'
+                videos = get_videos(self.videosList)
+            print('Videos: ', videos)
+            frame = FilterPredictions(self.GetParent(), config=self.config, videos=videos)
         elif frame_type == 'plot predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
