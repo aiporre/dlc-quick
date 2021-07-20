@@ -1979,7 +1979,10 @@ class LabelPredictions(wx.Frame):
             destfolder = self.destfolderParent
         else:
             destfolder = self.destfolder.GetPath()
-        print('VIDEOS: ', self.videos)
+        print('VIDEOS to be labeled: ', self.videos)
+        if len(self.videos) == 0:
+            print('No videos to label, please choose a folder or create a list of videos in \'analyze videos\' window')
+            return
         d.create_labeled_video(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
                                displayedbodyparts=bodyParts,
                                shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(),
