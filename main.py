@@ -2309,9 +2309,14 @@ class AnalyzeVideos(wx.Frame):
         self.listOrPath.SetSelection(0)
 
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        shuffle = self.shuffle.GetSelection()
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, shuffle))
+        self.shuffle = wx.Choice(self.panel, -1, choices=self.find_shuffles())
+        self.shuffle.SetSelection(0)
+        self.shuffle.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
+
+        snapshotLbl = wx.StaticText(self.panel, -1, "Snapshot:")
+        self.snapshots = self.find_snapshots()
+        self.snapshot = wx.Choice(self.panel, -1, choices=self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots) - 1)
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
         self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
@@ -2388,6 +2393,9 @@ class AnalyzeVideos(wx.Frame):
         line1 = wx.BoxSizer(wx.HORIZONTAL)
         line1.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(snapshotLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(self.snapshot, 0, wx.EXPAND | wx.ALL, 2)
+
         line1.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -2421,6 +2429,23 @@ class AnalyzeVideos(wx.Frame):
         self.panel.SetSizer(mainSizer)
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
+
+
+    def find_shuffles(self):
+        cfg = parse_yaml(self.config)
+        iteration = 'iteration-' + str(cfg['iteration'])
+        files = os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration))
+        print('files: ', files)
+        return files
+
+    def find_snapshots(self):
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest', 'config.yaml']
+
+    def onSelectShuffleNumber(self, event):
+        self.snapshots = self.find_snapshots()
+        self.snapshot.SetItems(self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots)-1)
 
     def onEvaluate(self, event):
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
