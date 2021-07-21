@@ -1771,7 +1771,7 @@ class PlotPredictions(wx.Frame):
         self.videos = videos if isinstance(videos, list) else [videos]
         self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
         self.track_method = track_method
-        config = parser_yaml(self.config)
+        cfg = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Plot predictions")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -1783,6 +1783,8 @@ class PlotPredictions(wx.Frame):
         showFiguresLbl = wx.StaticText(self.panel, -1, "Show figures:")
         self.showFigures = wx.CheckBox(self.panel, -1, "")
         self.showFigures.SetValue(False)
+        if cfg.get('multianimalproject', False):
+            self.showFigures.Disable()
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
         self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
@@ -1846,7 +1848,7 @@ class PlotPredictions(wx.Frame):
             d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
                                 shuffle=self.shuffle,
                                 trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
-                                showfigures=self.showFigures.GetValue(),
+                                showfigures=False,
                                 destfolder=destfolder, track_method=self.track_method)
         self.Close()
 
@@ -2350,8 +2352,8 @@ class AnalyzeVideos(wx.Frame):
 
         plotPredictionsButton = wx.Button(self.panel, label='Plot Predictions')
         plotPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'plot predictions'))
-        if cfg.get('multianimalproject', False):
-            plotPredictionsButton.Disable()
+        # if cfg.get('multianimalproject', False):
+        #     plotPredictionsButton.Disable()
 
         labelPredictionsButton = wx.Button(self.panel, label='Label Predictions')
         labelPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'label predictions'))
