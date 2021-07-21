@@ -18,9 +18,11 @@ import glob
 from gui.model_generation import ContactModelGeneration
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
+from gui.utils.snapshot_index import get_snapshots
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
+
 
 print('importing deeplab cut..')
 
@@ -1328,6 +1330,7 @@ class EvaluaterNetwork(wx.Frame):
         self.shuffleNumber = wx.Choice(self.panel, id=-1, choices=self.find_shuffles())
         self.shuffleNumber.SetSelection(0)
         self.iteration.Bind(wx.EVT_CHOICE, self.onSelectIteration)
+        self.shuffleNumber.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
 
 
         plottingLbl = wx.StaticText(self.panel, -1, "Plotting")
@@ -1363,8 +1366,10 @@ class EvaluaterNetwork(wx.Frame):
         self.rescale = wx.CheckBox(self.panel, -1, "")
         self.rescale.SetValue(False)
 
-        snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot (you can do that manually in the config.yaml)")
-        self.snapshotindex = wx.TextCtrl(self.panel, -1, "-1")
+        snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot")
+
+        self.snapshots = self.find_snapshots()
+        self.snapshotindex = wx.Choice(self.panel, -1, choices=self.snapshots)
 
         # box of results:
         summaryLbl = wx.StaticText(self.panel, -1, "summaryLbl")
@@ -1497,9 +1502,20 @@ class EvaluaterNetwork(wx.Frame):
         files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
         return files
 
+    def find_snapshots(self):
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest']
+
+
     def onSelectIteration(self, event):
         self.shuffleNumber.SetItems(self.find_shuffles())
         self.shuffleNumber.SetSelection(0)
+        self.onSelectShuffleNumber(None)
+
+    def onSelectShuffleNumber(self, event):
+        self.snapshots = self.find_snapshots()
+        self.snapshotindex.SetItems(self.snapshots)
+        self.snapshotindex.SetSelection(0)
 
     def onRadioButton(self, event, source):
         if source == 'All':
@@ -1510,16 +1526,10 @@ class EvaluaterNetwork(wx.Frame):
             self.radioButtons['All'].SetValue(False)
     def onConfigSnapshot(self, event):
         import deeplabcut as dlc
-        snapshotindex = self.snapshotindex.GetValue()
-        if snapshotindex.isdigit() or snapshotindex == 'all' or snapshotindex == '-1':
-            if snapshotindex == '-1':
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': -1})
-            elif snapshotindex == 'all':
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': 'all'})
-            else:
-                dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': int(snapshotindex)})
-        else:
-            print('Snapshot index has incorrect value. Valids are : \'numbers\' e.g. 800, \'all\' or \'-1\'')
+        snapshotindex = self.snapshotindex.GetSelection()
+        if self.snapshotindex.GetStringSelection() == 'latest':
+            snapshotindex = -1
+        dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': snapshotindex})
 
     def generate_collected_summary_csv(self, event):
         cfg = parse_yaml(self.config)
@@ -1613,12 +1623,14 @@ class EvaluaterNetwork(wx.Frame):
 
 
 class FilterPredictions(wx.Frame):
-    def __init__(self, parent, title='filter predictions', config=None, videos=[]):
+    def __init__(self, parent, title='filter predictions', config=None, videos=[], shuffle=''):
         assert len(videos)>0, 'No videos selected, please input which videos you want to analyze. Check videos_path and video type, or add videos to your video list'
+        assert len(shuffle), "No shuffle selection as input, please check the configuration in the analyze_videos window"
         super(FilterPredictions, self).__init__(parent, title=title, size=(640, 500))
 
         self.panel = MainPanel(self)
         self.config = config
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
         self.WIDTHOFINPUTS = 400
         config = parser_yaml(self.config)
         # # title in the panel
@@ -1626,12 +1638,7 @@ class FilterPredictions(wx.Frame):
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # input test to set the working directory
-        self.targetVideos = videos
-
-        # FIXME: Shuffle should be 1765 from window parent
-        shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
+        self.targetVideos = videos if isinstance(videos, list) else [videos]
 
         windowlengthLbl = wx.StaticText(self.panel, -1, "Window length:")
         self.windowlength = wx.TextCtrl(self.panel, -1, "5")
@@ -1658,10 +1665,11 @@ class FilterPredictions(wx.Frame):
         self.saveAsCSV.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
+        self.videoType = wx.TextCtrl(self.panel, -1, "avi")
 
         filterTypeLbl = wx.StaticText(self.panel, -1, "Filter type:")
         self.filterType = wx.Choice(self.panel, id=-1, choices=['arima', 'median'])
+        self.filterType.SetSelection(1)
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder (csv and h5 files will created there):", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
@@ -1683,8 +1691,6 @@ class FilterPredictions(wx.Frame):
         contentSizer = wx.BoxSizer(wx.HORIZONTAL)
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
-        inputSizer.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(windowlengthLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.windowlength, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(p_boundLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -1724,10 +1730,11 @@ class FilterPredictions(wx.Frame):
         filterType = self.filterType.GetString(self.filterType.GetCurrentSelection())
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         print("Input video: ", self.targetVideos)
+        print('video_type: ', self.videoType.GetValue())
         print("destfolder: ", destfolder)
         import deeplabcut as d
         d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
-                            shuffle=int(self.shuffle.GetValue()), filtertype=filterType,
+                            shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
                             windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
                             ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
                             alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
@@ -1755,21 +1762,19 @@ class FilterPredictions(wx.Frame):
 
 
 class PlotPredictions(wx.Frame):
-    def __init__(self, parent, title='Plot predictions', config=None, videos=[]):
+    def __init__(self, parent, title='Plot predictions', config=None, videos=[], shuffle='', track_method=None):
         super(PlotPredictions, self).__init__(parent, title=title, size=(640, 500))
+        assert len(shuffle)>0 , 'Shuffle selection is not defined as input, check your configuration in the analyze_videos window.'
         self.panel = MainPanel(self)
         self.config = config
         self.WIDTHOFINPUTS = 400
-        self.videos = videos
-        config = parser_yaml(self.config)
+        self.videos = videos if isinstance(videos, list) else [videos]
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+        self.track_method = track_method
+        cfg = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Plot predictions")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
-
-        # shuffle
-        shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
 
         filteredLbl = wx.StaticText(self.panel, -1, "Filtered:")
         self.filtered = wx.CheckBox(self.panel, -1, "")
@@ -1778,9 +1783,11 @@ class PlotPredictions(wx.Frame):
         showFiguresLbl = wx.StaticText(self.panel, -1, "Show figures:")
         self.showFigures = wx.CheckBox(self.panel, -1, "")
         self.showFigures.SetValue(False)
+        if cfg.get('multianimalproject', False):
+            self.showFigures.Disable()
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".mp4")
+        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
@@ -1803,8 +1810,6 @@ class PlotPredictions(wx.Frame):
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
         inputSizer2 = wx.BoxSizer(wx.VERTICAL)
-        inputSizer.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(filteredLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.filtered, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer2.Add(showFiguresLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -1833,10 +1838,18 @@ class PlotPredictions(wx.Frame):
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
-                            shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(),
-                            showfigures=self.showFigures.GetValue(),
-                            destfolder=destfolder)
+        if self.track_method is None:
+
+            d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(), shuffle=self.shuffle,
+                                trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
+                                showfigures=self.showFigures.GetValue(),
+                                destfolder=destfolder)
+        else:
+            d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
+                                shuffle=self.shuffle,
+                                trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
+                                showfigures=False,
+                                destfolder=destfolder, track_method=self.track_method)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -1860,22 +1873,19 @@ class PlotPredictions(wx.Frame):
 
 
 class LabelPredictions(wx.Frame):
-    def __init__(self, parent, title='Label predictions', config=None, videos=[], destfolder=None):
+    def __init__(self, parent, title='Label predictions', config=None, videos=[], destfolder=None, shuffle=""):
         super(LabelPredictions, self).__init__(parent, title=title, size=(640, 500))
+        assert len(shuffle)>0 , 'Shuffle selection is not defined as input, check your configuration in the analyze_videos window.'
         self.panel = MainPanel(self)
         self.config = config
         self.WIDTHOFINPUTS = 600
-        self.videos = videos
+        self.videos = videos if isinstance(videos, list) else [videos]
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
         self.destfolderParent = destfolder
         config = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Label predictions")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
-
-        # shuffle
-        shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
 
         # filtered
         filteredLbl = wx.StaticText(self.panel, -1, "Filtered:")
@@ -1917,9 +1927,27 @@ class LabelPredictions(wx.Frame):
         drawSkeletonLbl = wx.StaticText(self.panel, -1, "Draw skeleton:")
         self.drawSkeleton = wx.CheckBox(self.panel, -1, "")
         self.drawSkeleton.SetValue(False)
+
+        # destination folder
         parent = '' if self.destfolderParent is None else self.destfolderParent
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1, path=parent)
+        # trail points only single-animal
+
+        trailPointsLbl = wx.StaticText(self.panel, -1, "trail points to plot:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trailPoints = wx.TextCtrl(self.panel, -1, "5")
+        self.trailPoints.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.outputFrameRate))
+
+
+        # color by (ma-projects)
+        colorByLbl = wx.StaticText(self.panel, -1, "color code by:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.colorBy = wx.Choice(self.panel, -1, choices=['animal color', 'body color'])
+        self.colorBy.Disable() if not cfg.get('multianimalproject', False) else None
+        # track method
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'])
+        self.trackMethod.SetSelection(2)
+        self.trackMethod.Disable() if not cfg.get('multianimalproject', False) else None
 
         # create labeeled video
         labelButton = wx.Button(self.panel, label="Create Labeled Video")
@@ -1939,8 +1967,7 @@ class LabelPredictions(wx.Frame):
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
         inputSizer2 = wx.BoxSizer(wx.VERTICAL)
-        inputSizer.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3 = wx.BoxSizer(wx.VERTICAL)
         inputSizer.Add(filteredLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.filtered, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(saveFramesLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -1954,10 +1981,17 @@ class LabelPredictions(wx.Frame):
         inputSizer2.Add(self.outputFrameRate, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer2.Add(drawSkeletonLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer2.Add(self.drawSkeleton, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(trailPointsLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.trailPoints, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(colorByLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.colorBy, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
 
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
+        contentSizer.Add(inputSizer3, 0, wx.ALL, 10)
 
         # adding to the main sizer all the two groups
 
@@ -1979,16 +2013,43 @@ class LabelPredictions(wx.Frame):
             destfolder = self.destfolderParent
         else:
             destfolder = self.destfolder.GetPath()
+
         print('VIDEOS to be labeled: ', self.videos)
         if len(self.videos) == 0:
             print('No videos to label, please choose a folder or create a list of videos in \'analyze videos\' window')
             return
-        d.create_labeled_video(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
-                               displayedbodyparts=bodyParts,
-                               shuffle=int(self.shuffle.GetValue()), filtered=self.filtered.GetValue(),
-                               save_frames=self.saveFrames.GetValue(),
-                               codec=self.codec.GetValue(), outputframerate=outputframerate,
-                               draw_skeleton=self.drawSkeleton.GetValue(), destfolder=destfolder)
+
+        cfg = parse_yaml(self.config)
+        if cfg.get('multianimalproject', False):
+            d.create_labeled_video(self.config,
+                                   videos=self.videos,
+                                   videotype=self.videoType.GetValue(),
+                                   displayedbodyparts=bodyParts,
+                                   shuffle=self.shuffle,
+                                   trainingsetindex=self.trainIndex,
+                                   filtered=self.filtered.GetValue(),
+                                   save_frames=self.saveFrames.GetValue(),
+                                   codec=self.codec.GetValue(),
+                                   outputframerate=outputframerate,
+                                   draw_skeleton=self.drawSkeleton.GetValue(),
+                                   destfolder=destfolder,
+                                   color_by=self.colorBy.GetStringSelection(),
+                                   track_method=self.trackMethod.GetStringSelection(),
+                                   trailpoints=int(self.trailPoints.GetValue()))
+        else:
+            d.create_labeled_video(self.config,
+                                   videos=self.videos,
+                                   videotype=self.videoType.GetValue(),
+                                   displayedbodyparts=bodyParts,
+                                   shuffle=self.shuffle,
+                                   trainingsetindex=self.trainIndex,
+                                   filtered=self.filtered.GetValue(),
+                                   save_frames=self.saveFrames.GetValue(),
+                                   codec=self.codec.GetValue(),
+                                   outputframerate=outputframerate,
+                                   draw_skeleton=self.drawSkeleton.GetValue(),
+                                   destfolder=destfolder,
+                                   trailpoints=int(self.trailPoints.GetValue()))
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2048,13 +2109,17 @@ class LabelPredictions(wx.Frame):
 
 
 class ExtractOutliers(wx.Frame):
-    def __init__(self, parent, title='Extract outliers', config=None, videos=[]):
+    def __init__(self, parent, title='Extract outliers', config=None, videos=[], shuffle=""):
         super(ExtractOutliers, self).__init__(parent, title=title, size=(640, 500))
+        assert len(shuffle)>0 , 'Shuffle selection is not defined as input, check your configuration in the analyze_videos window.'
+
         self.panel = MainPanel(self)
         self.config = config
-        self.videos = videos
+        self.videos = videos if isinstance(videos, list) else [videos]
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+
         self.WIDTHOFINPUTS = 600
-        config = parser_yaml(self.config)
+        cfg = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Extract outliers")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -2063,10 +2128,13 @@ class ExtractOutliers(wx.Frame):
         videotypeLbl = wx.StaticText(self.panel, -1, "Video type:")
         self.videotype = wx.TextCtrl(self.panel, -1, "avi")
 
-        shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
+        # track method
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'])
+        self.trackMethod.SetSelection(2)
+        self.trackMethod.Disable() if not cfg.get('multianimalproject', False) else None
 
+        #
         # extraction algorithm
         extractionAlgLbl = wx.StaticText(self.panel, -1, "Extraction algorithm")
         self.extractionAlg = wx.Choice(self.panel, id=-1, choices=['kmeans', 'uniform'])
@@ -2116,8 +2184,14 @@ class ExtractOutliers(wx.Frame):
         self.saveLabeled = wx.CheckBox(self.panel, -1, "")
         self.saveLabeled.SetValue(True)
 
-        bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
-                                                      itemlabels=config['bodyparts'] + ['All'], type='checkBox')
+        if cfg.get('multianimalproject', False):
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+                                                          itemlabels=cfg['multianimalbodyparts'] + ['All'],
+                                                          type='checkBox')
+        else:
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+                                                          itemlabels=cfg['bodyparts'] + ['All'], type='checkBox')
+
         self.radioButtons = items
         self.radioButtonCurrentStatus = {}
         items['All'].SetValue(True)
@@ -2151,8 +2225,8 @@ class ExtractOutliers(wx.Frame):
         inputSizer3 = wx.BoxSizer(wx.VERTICAL)
         inputSizer.Add(videotypeLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.videotype, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(clusterColorLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.clusterColor, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(clusterResizeWidthLbl, 0, wx.EXPAND, 2)
@@ -2202,15 +2276,19 @@ class ExtractOutliers(wx.Frame):
         extractionAlg = self.extractionAlg.GetString(self.extractionAlg.GetCurrentSelection())
         bodyParts = get_radiobutton_status(self.radioButtons)
         print('Videos: ', self.videos, type(self.videos), type(self.videos[0]))
+        cfg = parser_yaml(self.config)
 
+        track_method = self.trackMethod.GetStringSelection() if cfg.get('multianimalproject', False) else ""
         d.extract_outlier_frames(config=self.config, videos=self.videos, videotype=self.videotype.GetValue(),
-                                 shuffle=int(self.shuffle.GetValue()),
+                                 shuffle=self.shuffle,
+                                 trainingsetindex=self.trainIndex,
                                  outlieralgorithm=outlieralg, comparisonbodyparts=bodyParts,
                                  epsilon=float(self.epsilon.GetValue()),
                                  p_bound=float(self.p_bound.GetValue()), ARdegree=int(self.ARdegree.GetValue()),
                                  MAdegree=int(self.MAdegree.GetValue()), alpha=float(self.alpha.GetValue()),
                                  extractionalgorithm=extractionAlg,
-                                 automatic=self.automatic.GetValue(), savelabeled=self.saveLabeled.GetValue())
+                                 automatic=self.automatic.GetValue(), savelabeled=self.saveLabeled.GetValue(),
+                                 track_method=track_method)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2293,9 +2371,14 @@ class AnalyzeVideos(wx.Frame):
         self.listOrPath.SetSelection(0)
 
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        shuffle = self.shuffle.GetSelection()
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, shuffle))
+        self.shuffle = wx.Choice(self.panel, -1, choices=self.find_shuffles())
+        self.shuffle.SetSelection(0)
+        self.shuffle.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
+
+        snapshotLbl = wx.StaticText(self.panel, -1, "Snapshot:")
+        self.snapshots = self.find_snapshots()
+        self.snapshot = wx.Choice(self.panel, -1, choices=self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots) - 1)
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
         self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
@@ -2307,6 +2390,14 @@ class AnalyzeVideos(wx.Frame):
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None']  + get_available_gpus())
         self.gpusAvailable.SetSelection(0)
+
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method")
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'] )
+        self.trackMethod.SetSelection(2)
+        cfg = parse_yaml(self.config)
+        if not cfg.get('multianimalproject', False):
+            trackMethodLbl.Hide()
+            self.trackMethod.Hide()
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
@@ -2334,6 +2425,8 @@ class AnalyzeVideos(wx.Frame):
 
         plotPredictionsButton = wx.Button(self.panel, label='Plot Predictions')
         plotPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'plot predictions'))
+        # if cfg.get('multianimalproject', False):
+        #     plotPredictionsButton.Disable()
 
         labelPredictionsButton = wx.Button(self.panel, label='Label Predictions')
         labelPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'label predictions'))
@@ -2372,12 +2465,21 @@ class AnalyzeVideos(wx.Frame):
         line1 = wx.BoxSizer(wx.HORIZONTAL)
         line1.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(snapshotLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(self.snapshot, 0, wx.EXPAND | wx.ALL, 2)
+
+        line2 = wx.BoxSizer(wx.HORIZONTAL)
+
+        line2.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
 
         inputSizer.Add(line1, 0, wx.EXPAND, 2)
+        inputSizer.Add(line2, 0, wx.EXPAND, 2)
+
         inputSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
         inputSizer.Add(listOrPathLbl, 0, wx.EXPAND, 2)
@@ -2406,6 +2508,23 @@ class AnalyzeVideos(wx.Frame):
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
 
+
+    def find_shuffles(self):
+        cfg = parse_yaml(self.config)
+        iteration = 'iteration-' + str(cfg['iteration'])
+        files = os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration))
+        print('files: ', files)
+        return files
+
+    def find_snapshots(self):
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest', 'config.yaml']
+
+    def onSelectShuffleNumber(self, event):
+        self.snapshots = self.find_snapshots()
+        self.snapshot.SetItems(self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots)-1)
+
     def onEvaluate(self, event):
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
             videos = [self.targetVideos.GetPath()]
@@ -2421,14 +2540,26 @@ class AnalyzeVideos(wx.Frame):
 
         import deeplabcut as d
         print("Videos to analyze: ", videos)
-        try:
+        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        if self.snapshot.GetStringSelection() != "config.yaml":
+            snapshotindex = self.snapshot.GetSelection()
+            if self.snapshot.GetStringSelection() == 'latest':
+                snapshotindex = -1
+            d.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': snapshotindex})
 
+        try:
             d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
-                             shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
+                             shuffle=shuffle_number, trainingsetindex=trainindex, gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
                              destfolder=destfolder)
         except IndexError as e:
             print(e)
             print('Snapshot index is not correct. Did you train your network? Select a correct Snapshot Index in the config.yaml or in the evaluation window in the main menu.')
+        cfg = parse_yaml(self.config)
+        if cfg.get('multianimalproject', False):
+            d.convert_detections2tracklets(self.config, videos=videos, videotype=self.videoType.GetValue(),
+                                           shuffle=shuffle_number, trainingsetindex=trainindex,
+                                           track_method=self.trackMethod.GetStringSelection(), overwrite=True)
+
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
                                style=wx.FD_DEFAULT_STYLE | wx.FD_FILE_MUST_EXIST)  # wx.FD_FILE_MUST_EXIST
@@ -2486,14 +2617,19 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = FilterPredictions(self.GetParent(), config=self.config, videos=videos)
+            frame = FilterPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
         elif frame_type == 'plot predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = PlotPredictions(self.GetParent(), config=self.config, videos=videos)
+            cfg = parse_yaml(self.config)
+            if cfg.get('multianimalproject', False):
+                track_method = self.trackMethod.GetStringSelection()
+            else:
+                track_method = None
+            frame = PlotPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection(), track_method=track_method)
         elif frame_type == 'label predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
@@ -2501,7 +2637,7 @@ class AnalyzeVideos(wx.Frame):
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
             destfolder = None if len(self.destfolder.GetPath()) == 0 else self.destfolder.GetPath()
-            frame = LabelPredictions(self.GetParent(), config=self.config, videos=videos, destfolder=destfolder)
+            frame = LabelPredictions(self.GetParent(), config=self.config, videos=videos, destfolder=destfolder, shuffle=self.shuffle.GetStringSelection())
         elif frame_type == 'extract outliers':
             count = self.videosList.GetItemCount()
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
@@ -2509,7 +2645,7 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos, type(videos), type(videos[0]))
-            frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos)
+            frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos,shuffle=self.shuffle.GetStringSelection())
         else:
             return
         frame.Show()
