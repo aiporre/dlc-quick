@@ -817,7 +817,24 @@ class NewProjectFrame(wx.Frame):
         import deeplabcut as d
         config_path = d.create_new_project(project=name, experimenter=experimenter, videos=videos,
                                            working_directory=wdir, copy_videos=copy_videos, multianimal=multi_animal)
-        d.auxiliaryfunctions.edit_config(config_path, {"project_type": self.projectType.GetStringSelection()})
+        project_type = self.projectType.GetStringSelection()
+        d.auxiliaryfunctions.edit_config(config_path, {"project_type": project_type})
+        if project_type=='contact' and not multi_animal:
+            d.auxiliaryfunctions.edit_config(config_path, {"bodyparts": ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9',
+                                                                         'b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9',
+                                                                         'nose']})
+        elif project_type=='contact' and multi_animal:
+            d.auxiliaryfunctions.edit_config(config_path,
+                                             {"multianimalbodyparts": ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9'],
+                                              "individuals":['wU1','wD1'],
+                                              'uniquebodyparts':'[nose]'})
+        elif (project_type=='whisking' or project_type=='motion') and multi_animal:
+            d.auxiliaryfunctions.edit_config(config_path,
+                                             {"multianimalbodyparts": ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7','a8', 'a9'],
+                                              "individuals": ['wR1', 'wR2', 'wR3', 'wR4', 'wL1', 'wL2', 'wL3', 'wL4'],
+                                              'uniquebodyparts': '[nose]'})
+        else:
+            print(f"WARNING: projec_type={project_type} is not compatible with multianimal = {multi_animal}. Analysis and Simplified modeles may not work")
         print('project create with config.yaml file:', config_path)
 
         self.mainFrame.configPath.SetPath(config_path)
