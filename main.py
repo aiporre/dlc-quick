@@ -2307,6 +2307,14 @@ class AnalyzeVideos(wx.Frame):
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None']  + get_available_gpus())
         self.gpusAvailable.SetSelection(0)
 
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method")
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'] )
+        self.trackMethod.SetSelection(2)
+        cfg = parse_yaml(self.config)
+        if not cfg.get('multianimalproject', False):
+            trackMethodLbl.Hide()
+            self.trackMethod.Hide()
+
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
 
@@ -2374,12 +2382,18 @@ class AnalyzeVideos(wx.Frame):
         line1.Add(snapshotLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.snapshot, 0, wx.EXPAND | wx.ALL, 2)
 
-        line1.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
+        line2 = wx.BoxSizer(wx.HORIZONTAL)
+
+        line2.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
 
         inputSizer.Add(line1, 0, wx.EXPAND, 2)
+        inputSizer.Add(line2, 0, wx.EXPAND, 2)
+
         inputSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
         inputSizer.Add(listOrPathLbl, 0, wx.EXPAND, 2)
@@ -2454,6 +2468,11 @@ class AnalyzeVideos(wx.Frame):
         except IndexError as e:
             print(e)
             print('Snapshot index is not correct. Did you train your network? Select a correct Snapshot Index in the config.yaml or in the evaluation window in the main menu.')
+        cfg = parse_yaml(self.config)
+        if cfg.get('multianimalproject', False):
+            d.convert_detections2tracklets(self.config, videos=videos, videotype=self.videoType.GetValue(),
+                                           shuffle=shuffle_number, trainingsetindex=trainindex,
+                                           track_method=self.trackMethod.GetStringSelection(), overwrite=True)
 
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
