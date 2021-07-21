@@ -1530,15 +1530,6 @@ class EvaluaterNetwork(wx.Frame):
         if self.snapshotindex.GetStringSelection() == 'latest':
             snapshotindex = -1
         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': snapshotindex})
-        # if snapshotindex.isdigit() or snapshotindex == 'all' or snapshotindex == '-1':
-        #     if snapshotindex == '-1':
-        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': -1})
-        #     elif snapshotindex == 'all':
-        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': 'all'})
-        #     else:
-        #         dlc.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': int(snapshotindex)})
-        # else:
-        #     print('Snapshot index has incorrect value. Valids are : \'numbers\' e.g. 800, \'all\' or \'-1\'')
 
     def generate_collected_summary_csv(self, event):
         cfg = parse_yaml(self.config)
@@ -2462,14 +2453,21 @@ class AnalyzeVideos(wx.Frame):
 
         import deeplabcut as d
         print("Videos to analyze: ", videos)
-        try:
+        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        if self.snapshot.GetStringSelection() != "config.yaml":
+            snapshotindex = self.snapshot.GetSelection()
+            if self.snapshot.GetStringSelection() == 'latest':
+                snapshotindex = -1
+            d.auxiliaryfunctions.edit_config(self.config, {'snapshotindex': snapshotindex})
 
+        try:
             d.analyze_videos(self.config, videos=videos, videotype=self.videoType.GetValue(),
-                             shuffle=self.shuffle.GetValue(), gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
+                             shuffle=shuffle_number, trainingsetindex=trainindex, gputouse=gputouse, save_as_csv=self.saveAsCSV.GetValue(),
                              destfolder=destfolder)
         except IndexError as e:
             print(e)
             print('Snapshot index is not correct. Did you train your network? Select a correct Snapshot Index in the config.yaml or in the evaluation window in the main menu.')
+
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
                                style=wx.FD_DEFAULT_STYLE | wx.FD_FILE_MUST_EXIST)  # wx.FD_FILE_MUST_EXIST
