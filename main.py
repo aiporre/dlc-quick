@@ -1762,7 +1762,7 @@ class FilterPredictions(wx.Frame):
 
 
 class PlotPredictions(wx.Frame):
-    def __init__(self, parent, title='Plot predictions', config=None, videos=[], shuffle=''):
+    def __init__(self, parent, title='Plot predictions', config=None, videos=[], shuffle='', track_method=None):
         super(PlotPredictions, self).__init__(parent, title=title, size=(640, 500))
         assert len(shuffle)>0 , 'Shuffle selection is not defined as input, check your configuration in the analyze_videos window.'
         self.panel = MainPanel(self)
@@ -1770,6 +1770,7 @@ class PlotPredictions(wx.Frame):
         self.WIDTHOFINPUTS = 400
         self.videos = videos if isinstance(videos, list) else [videos]
         self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+        self.track_method = track_method
         config = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Plot predictions")
@@ -1784,7 +1785,7 @@ class PlotPredictions(wx.Frame):
         self.showFigures.SetValue(False)
 
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, ".mp4")
+        self.videoType = wx.TextCtrl(self.panel, -1, ".avi")
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
@@ -1835,10 +1836,18 @@ class PlotPredictions(wx.Frame):
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(), shuffle=self.shuffle,
-                            trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
-                            showfigures=self.showFigures.GetValue(),
-                            destfolder=destfolder)
+        if self.track_method is None:
+
+            d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(), shuffle=self.shuffle,
+                                trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
+                                showfigures=self.showFigures.GetValue(),
+                                destfolder=destfolder)
+        else:
+            d.plot_trajectories(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
+                                shuffle=self.shuffle,
+                                trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
+                                showfigures=self.showFigures.GetValue(),
+                                destfolder=destfolder, track_method=self.track_method)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2341,6 +2350,8 @@ class AnalyzeVideos(wx.Frame):
 
         plotPredictionsButton = wx.Button(self.panel, label='Plot Predictions')
         plotPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'plot predictions'))
+        if cfg.get('multianimalproject', False):
+            plotPredictionsButton.Disable()
 
         labelPredictionsButton = wx.Button(self.panel, label='Label Predictions')
         labelPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'label predictions'))
@@ -2538,7 +2549,12 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = PlotPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
+            cfg = parse_yaml(self.config)
+            if cfg.get('multianimalproject', False):
+                track_method = self.trackMethod.GetStringSelection()
+            else:
+                track_method = None
+            frame = PlotPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection(), track_method=track_method)
         elif frame_type == 'label predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
