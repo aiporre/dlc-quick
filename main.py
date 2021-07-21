@@ -1927,9 +1927,27 @@ class LabelPredictions(wx.Frame):
         drawSkeletonLbl = wx.StaticText(self.panel, -1, "Draw skeleton:")
         self.drawSkeleton = wx.CheckBox(self.panel, -1, "")
         self.drawSkeleton.SetValue(False)
+
+        # destination folder
         parent = '' if self.destfolderParent is None else self.destfolderParent
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1, path=parent)
+        # trail points only single-animal
+
+        trailPointsLbl = wx.StaticText(self.panel, -1, "trail points to plot:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trailPoints = wx.TextCtrl(self.panel, -1, "5")
+        self.trailPoints.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.outputFrameRate))
+
+
+        # color by (ma-projects)
+        colorByLbl = wx.StaticText(self.panel, -1, "color code by:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.colorBy = wx.Choice(self.panel, -1, choices=['animal color', 'body color'])
+        self.colorBy.Disable() if not cfg.get('multianimalproject', False) else None
+        # track method
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'])
+        self.trackMethod.SetSelection(2)
+        self.trackMethod.Disable() if not cfg.get('multianimalproject', False) else None
 
         # create labeeled video
         labelButton = wx.Button(self.panel, label="Create Labeled Video")
@@ -1949,6 +1967,7 @@ class LabelPredictions(wx.Frame):
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
         inputSizer2 = wx.BoxSizer(wx.VERTICAL)
+        inputSizer3 = wx.BoxSizer(wx.VERTICAL)
         inputSizer.Add(filteredLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.filtered, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(saveFramesLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -1962,10 +1981,17 @@ class LabelPredictions(wx.Frame):
         inputSizer2.Add(self.outputFrameRate, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer2.Add(drawSkeletonLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer2.Add(self.drawSkeleton, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(trailPointsLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.trailPoints, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(colorByLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.colorBy, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer3.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
 
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
+        contentSizer.Add(inputSizer3, 0, wx.ALL, 10)
 
         # adding to the main sizer all the two groups
 
@@ -1988,12 +2014,37 @@ class LabelPredictions(wx.Frame):
         else:
             destfolder = self.destfolder.GetPath()
         print('VIDEOS: ', self.videos)
-        d.create_labeled_video(self.config, videos=self.videos, videotype=self.videoType.GetValue(),
-                               displayedbodyparts=bodyParts,
-                               shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtered=self.filtered.GetValue(),
-                               save_frames=self.saveFrames.GetValue(),
-                               codec=self.codec.GetValue(), outputframerate=outputframerate,
-                               draw_skeleton=self.drawSkeleton.GetValue(), destfolder=destfolder)
+        cfg = parse_yaml(self.config)
+        if cfg.get('multianimalproject', False):
+            d.create_labeled_video(self.config,
+                                   videos=self.videos,
+                                   videotype=self.videoType.GetValue(),
+                                   displayedbodyparts=bodyParts,
+                                   shuffle=self.shuffle,
+                                   trainingsetindex=self.trainIndex,
+                                   filtered=self.filtered.GetValue(),
+                                   save_frames=self.saveFrames.GetValue(),
+                                   codec=self.codec.GetValue(),
+                                   outputframerate=outputframerate,
+                                   draw_skeleton=self.drawSkeleton.GetValue(),
+                                   destfolder=destfolder,
+                                   color_by=self.colorBy.GetStringSelection(),
+                                   track_method=self.trackMethod.GetStringSelection(),
+                                   trailpoints=int(self.trailPoints.GetValue()))
+        else:
+            d.create_labeled_video(self.config,
+                                   videos=self.videos,
+                                   videotype=self.videoType.GetValue(),
+                                   displayedbodyparts=bodyParts,
+                                   shuffle=self.shuffle,
+                                   trainingsetindex=self.trainIndex,
+                                   filtered=self.filtered.GetValue(),
+                                   save_frames=self.saveFrames.GetValue(),
+                                   codec=self.codec.GetValue(),
+                                   outputframerate=outputframerate,
+                                   draw_skeleton=self.drawSkeleton.GetValue(),
+                                   destfolder=destfolder,
+                                   trailpoints=int(self.trailPoints.GetValue()))
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2053,13 +2104,17 @@ class LabelPredictions(wx.Frame):
 
 
 class ExtractOutliers(wx.Frame):
-    def __init__(self, parent, title='Extract outliers', config=None, videos=[]):
+    def __init__(self, parent, title='Extract outliers', config=None, videos=[], shuffle=""):
         super(ExtractOutliers, self).__init__(parent, title=title, size=(640, 500))
+        assert len(shuffle)>0 , 'Shuffle selection is not defined as input, check your configuration in the analyze_videos window.'
+
         self.panel = MainPanel(self)
         self.config = config
-        self.videos = videos
+        self.videos = videos if isinstance(videos, list) else [videos]
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+
         self.WIDTHOFINPUTS = 600
-        config = parser_yaml(self.config)
+        cfg = parser_yaml(self.config)
         # # title in the panel
         topLbl = wx.StaticText(self.panel, -1, "Extract outliers")
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -2068,10 +2123,13 @@ class ExtractOutliers(wx.Frame):
         videotypeLbl = wx.StaticText(self.panel, -1, "Video type:")
         self.videotype = wx.TextCtrl(self.panel, -1, "avi")
 
-        shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.shuffle))
+        # track method
+        trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'])
+        self.trackMethod.SetSelection(2)
+        self.trackMethod.Disable() if not cfg.get('multianimalproject', False) else None
 
+        #
         # extraction algorithm
         extractionAlgLbl = wx.StaticText(self.panel, -1, "Extraction algorithm")
         self.extractionAlg = wx.Choice(self.panel, id=-1, choices=['kmeans', 'uniform'])
@@ -2121,8 +2179,14 @@ class ExtractOutliers(wx.Frame):
         self.saveLabeled = wx.CheckBox(self.panel, -1, "")
         self.saveLabeled.SetValue(True)
 
-        bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
-                                                      itemlabels=config['bodyparts'] + ['All'], type='checkBox')
+        if cfg.get('multianimalproject', False):
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+                                                          itemlabels=cfg['multianimalbodyparts'] + ['All'],
+                                                          type='checkBox')
+        else:
+            bodyPartsBox, items = self.MakeStaticBoxSizer(boxlabel='body parts',
+                                                          itemlabels=cfg['bodyparts'] + ['All'], type='checkBox')
+
         self.radioButtons = items
         self.radioButtonCurrentStatus = {}
         items['All'].SetValue(True)
@@ -2156,8 +2220,8 @@ class ExtractOutliers(wx.Frame):
         inputSizer3 = wx.BoxSizer(wx.VERTICAL)
         inputSizer.Add(videotypeLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.videotype, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(trackMethodLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.trackMethod, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(clusterColorLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.clusterColor, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(clusterResizeWidthLbl, 0, wx.EXPAND, 2)
@@ -2207,15 +2271,19 @@ class ExtractOutliers(wx.Frame):
         extractionAlg = self.extractionAlg.GetString(self.extractionAlg.GetCurrentSelection())
         bodyParts = get_radiobutton_status(self.radioButtons)
         print('Videos: ', self.videos, type(self.videos), type(self.videos[0]))
+        cfg = parser_yaml(self.config)
 
+        track_method = self.trackMethod.GetStringSelection() if cfg.get('multianimalproject', False) else ""
         d.extract_outlier_frames(config=self.config, videos=self.videos, videotype=self.videotype.GetValue(),
-                                 shuffle=int(self.shuffle.GetValue()),
+                                 shuffle=self.shuffle,
+                                 trainingsetindex=self.trainIndex,
                                  outlieralgorithm=outlieralg, comparisonbodyparts=bodyParts,
                                  epsilon=float(self.epsilon.GetValue()),
                                  p_bound=float(self.p_bound.GetValue()), ARdegree=int(self.ARdegree.GetValue()),
                                  MAdegree=int(self.MAdegree.GetValue()), alpha=float(self.alpha.GetValue()),
                                  extractionalgorithm=extractionAlg,
-                                 automatic=self.automatic.GetValue(), savelabeled=self.saveLabeled.GetValue())
+                                 automatic=self.automatic.GetValue(), savelabeled=self.saveLabeled.GetValue(),
+                                 track_method=track_method)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2572,7 +2640,7 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos, type(videos), type(videos[0]))
-            frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos)
+            frame = ExtractOutliers(self.GetParent(), config=self.config, videos=videos,shuffle=self.shuffle.GetStringSelection())
         else:
             return
         frame.Show()
