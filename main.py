@@ -17,11 +17,13 @@ import glob
 
 from gui.model_generation import ContactModelGeneration
 from gui.utils import parse_yaml
+from gui.utils.colors import TerminalColors
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import get_snapshots
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
+
 
 
 print('importing deeplab cut..')
@@ -1547,7 +1549,7 @@ class EvaluaterNetwork(wx.Frame):
 
     def find_snapshots(self):
         training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
-        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest']
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest', 'all']
 
 
     def onSelectIteration(self, event):
@@ -2531,6 +2533,7 @@ class ExtractOutliers(wx.Frame):
 class AnalyzeVideos(wx.Frame):
     def __init__(self, parent, title='Analyze videos', config=None):
         super(AnalyzeVideos, self).__init__(parent, title=title, size=(640, 500))
+        self.parent = parent
         self.panel = MainPanel(self)
         self.config = config
         self.WIDTHOFINPUTS = 400
@@ -2629,7 +2632,7 @@ class AnalyzeVideos(wx.Frame):
 
         # button to create project
         buttonAnalyze = wx.Button(self.panel, label="Analyze")
-        buttonAnalyze.Bind(wx.EVT_BUTTON, self.onEvaluate)
+        buttonAnalyze.Bind(wx.EVT_BUTTON, self.onAnalyzeVideos)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -2736,17 +2739,22 @@ class AnalyzeVideos(wx.Frame):
         import deeplabcut as d
         print("Videos predictions analyzed for pose destection assesment: ", videos)
         trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        try:
 
-        d.create_video_with_all_detections(
-            self.config,
-            videos,
-            videotype=self.videoType.GetValue(),
-            shuffle=shuffle_number,
-            trainingsetindex=trainindex,
-            destfolder=destfolder
-        )
+            d.create_video_with_all_detections(
+                self.config,
+                videos,
+                videotype=self.videoType.GetValue(),
+                shuffle=shuffle_number,
+                trainingsetindex=trainindex,
+                destfolder=destfolder
+            )
+            wx.MessageDialog(self.parent, 'Check the videos ".._full.mp4" and make a decision: \n \t 1. Pose detection is fine, then continue with the refinement of animal tracking \n \t 2. Pose detection not so good. Relabel/Extract new frames/Extact outliers and retrain your model, maybe use other model.', 'Test', wx.OK | wx.ICON_INFORMATION).ShowModal()
+        except FileNotFoundError as e:
+            print(f"{TerminalColors.FAIL}Error: {e} {TerminalColors.ENDC}")
+            print(f"{TerminalColors.WARNING}Maybe you need to run analyze_videos first. {TerminalColors.ENDC}")
 
-    def onEvaluate(self, event):
+    def onAnalyzeVideos(self, event):
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
             videos = [self.targetVideos.GetPath()]
         else:  # 'target videos list'
@@ -2839,7 +2847,7 @@ class AnalyzeVideos(wx.Frame):
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
             frame = RefineTracklets(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
-        if frame_type == 'filter predictions':
+        elif frame_type == 'filter predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
             else:  # 'target videos list'
