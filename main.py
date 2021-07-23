@@ -1383,6 +1383,10 @@ class EvaluaterNetwork(wx.Frame):
         self.rescale = wx.CheckBox(self.panel, -1, "")
         self.rescale.SetValue(False)
 
+        createMapsAllLbl = wx.StaticText(self.panel, -1, "Creat maps the whole test set (takes time..)")
+        self.createMapsAll = wx.CheckBox(self.panel, -1, "")
+        self.createMapsAll.SetValue(False)
+
         snapshotindexLbl = wx.StaticText(self.panel, -1, "Select best snapshot")
 
         self.snapshots = self.find_snapshots()
@@ -1400,6 +1404,9 @@ class EvaluaterNetwork(wx.Frame):
 
         buttonConfig = wx.Button(self.panel, label="Write snapshot to config.yaml")
         buttonConfig.Bind(wx.EVT_BUTTON, self.onConfigSnapshot)
+
+        buttonMaps = wx.Button(self.panel, label="Make test maps")
+        buttonMaps.Bind(wx.EVT_BUTTON, self.on_create_test_map)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1438,10 +1445,13 @@ class EvaluaterNetwork(wx.Frame):
         inputSizer3.Add(self.gpusAvailable, 0, wx.EXPAND, 2)
         inputSizer3.Add(rescaleLbl, 0, wx.EXPAND, 2)
         inputSizer3.Add(self.rescale, 0, wx.EXPAND, 2)
+        inputSizer3.Add(createMapsAllLbl, 0, wx.EXPAND, 2)
+        inputSizer3.Add(self.createMapsAll, 0, wx.EXPAND, 2)
 
         buttonSizer.Add(buttonEvaluate, 0, wx.CENTER | wx.ALL, 4)
         buttonSizer.Add(buttonCollect, 0, wx.CENTER | wx.ALL, 4)
         buttonSizer.Add(buttonConfig, 0, wx.CENTER |  wx.ALL, 4)
+        buttonSizer.Add(buttonMaps, 0, wx.CENTER | wx.ALL, 4)
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
@@ -1475,6 +1485,22 @@ class EvaluaterNetwork(wx.Frame):
                            show_errors=self.showError.GetValue(), comparisonbodyparts=bodyParts, gputouse=gputouse,
                            rescale=self.rescale.GetValue())
         self.Close()
+
+    def on_create_test_map(self, event):
+        import deeplabcut as d
+        if self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()) == 'None':
+            gputouse = None
+        else:
+            gputouse = int(self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()))
+
+        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        if self.createMapsAll.GetValue():
+            print('Creating maps for all samples in the training/test set.. this will take a while....')
+            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gpu= gputouse)
+        else:
+            print('Creating maps for three samples (0, 5 and 10). Check evaluation_results folder')
+            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gpu= gputouse, Indices=[0,5,10])
+
 
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150, 25), type='block'):
         box = wx.StaticBox(self.panel, -1, boxlabel)
@@ -1637,6 +1663,144 @@ class EvaluaterNetwork(wx.Frame):
         # sizer.Add(grid, 1, wx.EXPAND, 2)
         grid.AutoSize()
         return grid
+
+class RefineTracklets(wx.Frame):
+    def __init__(self, parent, title='Refine', config=None, videos=[], shuffle=''):
+        assert len(videos)>0, 'No videos selected, please input which videos you want to analyze. Check videos_path and video type, or add videos to your video list'
+        assert len(shuffle), "No shuffle selection as input, please check the configuration in the analyze_videos window"
+        super(RefineTracklets, self).__init__(parent, title=title, size=(640, 500))
+
+        self.panel = MainPanel(self)
+        self.config = config
+        self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+        self.WIDTHOFINPUTS = 400
+        config = parser_yaml(self.config)
+        # # title in the panel
+        topLbl = wx.StaticText(self.panel, -1, "Filter predictions")
+        topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        # input test to set the working directory
+        self.targetVideos = videos if isinstance(videos, list) else [videos]
+
+        windowlengthLbl = wx.StaticText(self.panel, -1, "Window length:")
+        self.windowlength = wx.TextCtrl(self.panel, -1, "5")
+        self.windowlength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.windowlength))
+
+        p_boundLbl = wx.StaticText(self.panel, -1, "P-Bound:")
+        self.p_bound = wx.TextCtrl(self.panel, -1, "0.001")
+        self.p_bound.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.p_bound))
+
+        ARdegreeLbl = wx.StaticText(self.panel, -1, "Autoregressive degree:")
+        self.ARdegree = wx.TextCtrl(self.panel, -1, "3")
+        self.ARdegree.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.ARdegree))
+
+        MAdegreeLbl = wx.StaticText(self.panel, -1, "Moving Avarage degree:")
+        self.MAdegree = wx.TextCtrl(self.panel, -1, "1")
+        self.MAdegree.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.MAdegree))
+
+        alphaLbl = wx.StaticText(self.panel, -1, "MEDIAN degree:")
+        self.alpha = wx.TextCtrl(self.panel, -1, "0.5")
+        self.alpha.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.alpha))
+
+        saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
+        self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
+        self.saveAsCSV.SetValue(False)
+
+        videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
+        self.videoType = wx.TextCtrl(self.panel, -1, "avi")
+
+        filterTypeLbl = wx.StaticText(self.panel, -1, "Filter type:")
+        self.filterType = wx.Choice(self.panel, id=-1, choices=['arima', 'median'])
+        self.filterType.SetSelection(1)
+
+        destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder (csv and h5 files will created there):", size=wx.Size(self.WIDTHOFINPUTS, 25))
+        self.destfolder = wx.DirPickerCtrl(self.panel, -1)
+
+        buttonFilter = wx.Button(self.panel, label="Filter")
+        buttonFilter.Bind(wx.EVT_BUTTON, self.onFilter)
+
+        # create the main sizer:
+        mainSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # add the label on the top of main sizer
+        mainSizer.Add(topLbl, 0, wx.ALL, 5)
+        mainSizer.Add(wx.StaticLine(self.panel), 0,
+                      wx.EXPAND | wx.TOP, 5)
+        mainSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
+        mainSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
+
+        # all the stuff insider the
+        contentSizer = wx.BoxSizer(wx.HORIZONTAL)
+        # create inputs box... (name, experimenter, working dir and list of videos)
+        inputSizer = wx.BoxSizer(wx.VERTICAL)
+        inputSizer.Add(windowlengthLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.windowlength, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(p_boundLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.p_bound, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(ARdegreeLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.ARdegree, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(filterTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.filterType, 0, wx.EXPAND | wx.ALL, 2)
+
+        inputSizer2 = wx.BoxSizer(wx.VERTICAL)
+        inputSizer2.Add(MAdegreeLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(self.MAdegree, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(alphaLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(self.alpha, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(self.videoType, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer2.Add(buttonFilter, 0, wx.EXPAND | wx.ALL, 2)
+
+        # at the end of the add to the stuff sizer
+        contentSizer.Add(inputSizer, 0, wx.ALL, 10)
+        contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
+
+        # adding to the main sizer all the two groups
+
+        mainSizer.Add(contentSizer, 0, wx.TOP | wx.EXPAND, 15)
+        # mainSizer.Add(rightSizer, 0, wx.ALL, 10)
+
+        # sizer fit and fix
+        self.panel.SetSizer(mainSizer)
+        mainSizer.Fit(self)
+        mainSizer.SetSizeHints(self)
+
+    def onFilter(self, event):
+        print('Filtering video(s): ')
+        filterType = self.filterType.GetString(self.filterType.GetCurrentSelection())
+        destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+        print("Input video: ", self.targetVideos)
+        print('video_type: ', self.videoType.GetValue())
+        print("destfolder: ", destfolder)
+        import deeplabcut as d
+        d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
+                            shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
+                            windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
+                            ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
+                            alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
+                            destfolder=destfolder)
+        self.Close()
+
+    def force_numeric_int(self, event, edit):
+        keycode = event.GetKeyCode()
+        if keycode < 255:
+            # valid ASCII
+            if chr(keycode).isdigit() or keycode == 8:
+                event.Skip()
+        if keycode == 314 or keycode == 316:
+            event.Skip()
+
+    def force_numeric_float(self, event, edit):
+        raw_value = edit.GetValue().strip()
+        keycode = event.GetKeyCode()
+        if keycode < 255:
+            # valid ASCII
+            if chr(keycode).isdigit() or keycode == 8 or chr(keycode) == '.' and '.' not in raw_value:
+                event.Skip()
+        if keycode == 314 or keycode == 316:
+            event.Skip()
 
 
 class FilterPredictions(wx.Frame):
@@ -2440,6 +2604,18 @@ class AnalyzeVideos(wx.Frame):
         filterPredictionsButton = wx.Button(self.panel, label='Filter Predictions')
         filterPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'filter predictions'))
 
+        # button to refine tracklets
+        refineTrackletsButton = wx.Button(self.panel, label='Refine Tracklets')
+        refineTrackletsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'refine tracklets'))
+        if not cfg.get('multianimalproject', False):
+             refineTrackletsButton.Disable()
+
+        # button to pose detection assesment
+        poseAssesmentButton = wx.Button(self.panel, label='Video Assesment')
+        poseAssesmentButton.Bind(wx.EVT_BUTTON, self.on_video_assesment)
+        if not cfg.get('multianimalproject', False):
+             poseAssesmentButton.Disable()
+
         plotPredictionsButton = wx.Button(self.panel, label='Plot Predictions')
         plotPredictionsButton.Bind(wx.EVT_BUTTON, lambda event: self.on_new_frame(event, 'plot predictions'))
         # if cfg.get('multianimalproject', False):
@@ -2507,6 +2683,8 @@ class AnalyzeVideos(wx.Frame):
         buttonSizer.Add(self.buttonPlus, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(self.buttonMinus, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(buttonAnalyze, 0, wx.EXPAND | wx.ALL, 5)
+        buttonSizer.Add(poseAssesmentButton, 0, wx.EXPAND | wx.ALL, 5)
+        buttonSizer.Add(refineTrackletsButton, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(filterPredictionsButton, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(plotPredictionsButton, 0, wx.EXPAND | wx.ALL, 5)
         buttonSizer.Add(labelPredictionsButton, 0, wx.EXPAND | wx.ALL, 5)
@@ -2541,6 +2719,32 @@ class AnalyzeVideos(wx.Frame):
         self.snapshots = self.find_snapshots()
         self.snapshot.SetItems(self.snapshots)
         self.snapshot.SetSelection(len(self.snapshots)-1)
+
+    def on_video_assesment(self, event):
+        if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
+            videos = [self.targetVideos.GetPath()]
+        else:  # 'target videos list'
+            videos = get_videos(self.videosList)
+        if self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()) == 'None':
+            gputouse = None
+        else:
+            gputouse = int(self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()))
+        destfolder = self.destfolder.GetPath()
+        if destfolder == '':
+            destfolder = None
+
+        import deeplabcut as d
+        print("Videos predictions analyzed for pose destection assesment: ", videos)
+        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+
+        d.create_video_with_all_detections(
+            self.config,
+            videos,
+            videotype=self.videoType.GetValue(),
+            shuffle=shuffle_number,
+            trainingsetindex=trainindex,
+            destfolder=destfolder
+        )
 
     def onEvaluate(self, event):
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
@@ -2628,7 +2832,14 @@ class AnalyzeVideos(wx.Frame):
         if frame_type is None or len(frame_type) == 0:  # empty string:
             print('new frame not specified in button!! ')
             return
-        elif frame_type == 'filter predictions':
+        elif frame_type == 'refine tracklets':
+            if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
+                videos = self.targetVideos.GetPath()
+            else:  # 'target videos list'
+                videos = get_videos(self.videosList)
+            print('Videos: ', videos)
+            frame = RefineTracklets(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
+        if frame_type == 'filter predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
             else:  # 'target videos list'
