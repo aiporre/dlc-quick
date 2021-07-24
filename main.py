@@ -1868,7 +1868,7 @@ class RefineTracklets(wx.Frame):
                     print(f'video {videoname} not processed')
 
     def onChangeDestFolder(self, event):
-        if os.path.exist(self.destfolder.GetPath()) and os.path.isdir(self.destfolder.GetPath()):
+        if os.path.exists(self.destfolder.GetPath()) and os.path.isdir(self.destfolder.GetPath()):
             self.update_status_videos_choice()
 
     def onCreateTracks(self, event):
