@@ -1,6 +1,7 @@
 import subprocess
 import webbrowser
 
+import deeplabcut.utils
 from deeplabcut.utils import skeleton
 from pathlib import Path
 
@@ -16,10 +17,11 @@ import matplotlib
 import glob
 
 from gui.model_generation import ContactModelGeneration
+from gui.rat_choice_list import RatChoice
 from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
-from gui.utils.snapshot_index import get_snapshots
+from gui.utils.snapshot_index import get_snapshots, find_analyzed_data_generic
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
 from gui.multi_whisker_label_toolbox import LabelWhiskersFrame as MultiLabelWhiskersFrame
@@ -1495,13 +1497,13 @@ class EvaluaterNetwork(wx.Frame):
         else:
             gputouse = int(self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()))
 
-        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffleNumber.GetStringSelection())
         if self.createMapsAll.GetValue():
             print('Creating maps for all samples in the training/test set.. this will take a while....')
-            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gpu= gputouse)
+            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gputouse=gputouse)
         else:
             print('Creating maps for three samples (0, 5 and 10). Check evaluation_results folder')
-            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gpu= gputouse, Indices=[0,5,10])
+            d.extract_save_all_maps(self.config,shuffle_number, trainindex, gputouse=gputouse, Indices=[0,5,10])
 
 
     def MakeStaticBoxSizer(self, boxlabel, itemlabels, size=(150, 25), type='block'):
@@ -1667,14 +1669,16 @@ class EvaluaterNetwork(wx.Frame):
         return grid
 
 class RefineTracklets(wx.Frame):
-    def __init__(self, parent, title='Refine', config=None, videos=[], shuffle=''):
+    def __init__(self, parent, title='Refine', config=None, videos=[], shuffle='', track_method=None):
         assert len(videos)>0, 'No videos selected, please input which videos you want to analyze. Check videos_path and video type, or add videos to your video list'
         assert len(shuffle), "No shuffle selection as input, please check the configuration in the analyze_videos window"
+        assert isinstance(track_method, str) and track_method in ['skeleton', 'box', 'ellipse'], f"Input track_method {track_method}must be an string in box, elipse or skeleton"
         super(RefineTracklets, self).__init__(parent, title=title, size=(640, 500))
 
         self.panel = MainPanel(self)
         self.config = config
         self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+        self.track_method = track_method
         self.WIDTHOFINPUTS = 400
         config = parser_yaml(self.config)
         # # title in the panel
@@ -1682,23 +1686,41 @@ class RefineTracklets(wx.Frame):
         topLbl.SetFont(wx.Font(18, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         # input test to set the working directory
-        self.targetVideos = videos if isinstance(videos, list) else [videos]
+        videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
+        self.videoType = wx.TextCtrl(self.panel, -1, "avi", style= wx.TE_PROCESS_ENTER)
+        self.videoType.Bind(wx.EVT_TEXT_ENTER, self.onChangeVideoType)
 
-        windowlengthLbl = wx.StaticText(self.panel, -1, "Window length:")
-        self.windowlength = wx.TextCtrl(self.panel, -1, "5")
-        self.windowlength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.windowlength))
+        self.running_on_dir =  not isinstance(videos, list) and os.path.isdir(videos)
+        self.video_path = videos if self.running_on_dir else None
+        if self.running_on_dir:
+            self.videos = deeplabcut.utils.GetVideoList("all", self.video_path,
+                                                        self.videoType.GetValue())
+            self.videos = list(filter(lambda x: "_full." not in x and "_labeled."  not in x, self.videos))
+            self.videos = list(map(lambda x: os.path.join(self.video_path, x),self.videos))
+        else:
+            self.videos = videos
 
-        p_boundLbl = wx.StaticText(self.panel, -1, "P-Bound:")
-        self.p_bound = wx.TextCtrl(self.panel, -1, "0.001")
-        self.p_bound.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.p_bound))
+        videosChoiceLbl =  wx.StaticText(self.panel, -1, "Select video to process:")
+        self.videosChoice = RatChoice(self.panel, -1, choices=[Path(v).name for v in self.videos])
 
-        ARdegreeLbl = wx.StaticText(self.panel, -1, "Autoregressive degree:")
-        self.ARdegree = wx.TextCtrl(self.panel, -1, "3")
-        self.ARdegree.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.ARdegree))
+        self.makeTracksInAllVideos = wx.CheckBox(self.panel, -1, "Create tracks all files:")
+        self.makeTracksInAllVideos.SetValue(True)
 
-        MAdegreeLbl = wx.StaticText(self.panel, -1, "Moving Avarage degree:")
-        self.MAdegree = wx.TextCtrl(self.panel, -1, "1")
-        self.MAdegree.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.MAdegree))
+        numberOfTracksLbl = wx.StaticText(self.panel, -1, "Number of track (individuals in video):")
+        self.numberOfTracks = wx.TextCtrl(self.panel, -1, "6")
+        self.numberOfTracks.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.numberOfTracks))
+
+        minSwapHighlightLbl = wx.StaticText(self.panel, -1, "Min swap length to hightlight:")
+        self.minSwapHighlight = wx.TextCtrl(self.panel, -1, "2")
+        self.minSwapHighlight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.minSwapHighlight))
+
+        maxGapLbl = wx.StaticText(self.panel, -1, "Max gap size of missing to fill:")
+        self.maxGap = wx.TextCtrl(self.panel, -1, "5")
+        self.maxGap.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.maxGap))
+
+        trailLengthLbl = wx.StaticText(self.panel, -1, "Trail length (gui visual):")
+        self.trailLength = wx.TextCtrl(self.panel, -1, "25")
+        self.trailLength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.trailLength))
 
         alphaLbl = wx.StaticText(self.panel, -1, "MEDIAN degree:")
         self.alpha = wx.TextCtrl(self.panel, -1, "0.5")
@@ -1708,8 +1730,7 @@ class RefineTracklets(wx.Frame):
         self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
         self.saveAsCSV.SetValue(False)
 
-        videoTypeLbl = wx.StaticText(self.panel, -1, "Video type:")
-        self.videoType = wx.TextCtrl(self.panel, -1, "avi")
+
 
         filterTypeLbl = wx.StaticText(self.panel, -1, "Filter type:")
         self.filterType = wx.Choice(self.panel, id=-1, choices=['arima', 'median'])
@@ -1717,12 +1738,17 @@ class RefineTracklets(wx.Frame):
 
         destfolderLbl = wx.StaticText(self.panel, -1, "Dest Folder (csv and h5 files will created there):", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
+        self.destfolder.Bind(wx.EVT_DIRPICKER_CHANGED, self.onChangeDestFolder)
 
-        buttonFilter = wx.Button(self.panel, label="Filter")
-        buttonFilter.Bind(wx.EVT_BUTTON, self.onFilter)
+        buttonTracks = wx.Button(self.panel, label="Create tracks")
+        buttonTracks.Bind(wx.EVT_BUTTON, self.onCreateTracks)
+
+        buttonRefine = wx.Button(self.panel, label="Refine Tracks")
+        buttonRefine.Bind(wx.EVT_BUTTON, self.onRefine)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
+        buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # add the label on the top of main sizer
         mainSizer.Add(topLbl, 0, wx.ALL, 5)
@@ -1735,33 +1761,55 @@ class RefineTracklets(wx.Frame):
         contentSizer = wx.BoxSizer(wx.HORIZONTAL)
         # create inputs box... (name, experimenter, working dir and list of videos)
         inputSizer = wx.BoxSizer(wx.VERTICAL)
-        inputSizer.Add(windowlengthLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.windowlength, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(p_boundLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.p_bound, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(ARdegreeLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.ARdegree, 0, wx.EXPAND | wx.ALL, 2)
+
+        # ---line (videos choice section)
+        inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+        inputSizer.Add(videosChoiceLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.videosChoice, 0, wx.EXPAND | wx.ALL, 2)
+
+        # ---line (track calcualtion section)
+        inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+
+
+        inputSizer.Add(self.makeTracksInAllVideos, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(numberOfTracksLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.numberOfTracks, 0, wx.EXPAND | wx.ALL, 2)
+
+        # ---line (refine tracks section)
+        inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+        inputSizer.Add(minSwapHighlightLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.minSwapHighlight, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(maxGapLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.maxGap, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(trailLengthLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.trailLength, 0, wx.EXPAND | wx.ALL, 2)
+
+        #  -- line (?? section)
+        inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
         inputSizer.Add(filterTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.filterType, 0, wx.EXPAND | wx.ALL, 2)
+        # inputSizer2 = wx.BoxSizer(wx.VERTICAL)
+        inputSizer.Add(alphaLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.alpha, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.videoType, 0, wx.EXPAND | wx.ALL, 2)
+        #  -- line (button section)
+        inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
 
-        inputSizer2 = wx.BoxSizer(wx.VERTICAL)
-        inputSizer2.Add(MAdegreeLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(self.MAdegree, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(alphaLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(self.alpha, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(self.videoType, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer2.Add(buttonFilter, 0, wx.EXPAND | wx.ALL, 2)
-
+        buttonSizer.Add(buttonTracks, 0, wx.CENTER | wx.ALL, 2)
+        buttonSizer.Add(buttonRefine, 0, wx.CENTER | wx.ALL, 2)
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
-        contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
+        # contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
 
         # adding to the main sizer all the two groups
 
         mainSizer.Add(contentSizer, 0, wx.TOP | wx.EXPAND, 15)
+        mainSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
+
+        mainSizer.Add(buttonSizer, 0, wx.TOP | wx.BOTTOM | wx.CENTER, 20)
         # mainSizer.Add(rightSizer, 0, wx.ALL, 10)
 
         # sizer fit and fix
@@ -1769,21 +1817,99 @@ class RefineTracklets(wx.Frame):
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
 
-    def onFilter(self, event):
-        print('Filtering video(s): ')
-        filterType = self.filterType.GetString(self.filterType.GetCurrentSelection())
-        destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
-        print("Input video: ", self.targetVideos)
-        print('video_type: ', self.videoType.GetValue())
+    def onRefine(self, event):
+        print('Refine videos: ')
+        # get video from videos list (files with fullpath)
+        video = self.videos[self.videosChoice.GetSelection()]
+        # destfolder is where the h5 or pickle tracked is searched
+        destfolder = str(Path(video).parents[0]) if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+
+        print("Input video: ", video)
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
-                            shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
-                            windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
-                            ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
-                            alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
-                            destfolder=destfolder)
-        self.Close()
+        cfg = parse_yaml(self.config)
+        xx = cfg["TrainingFraction"][int(self.trainIndex)]
+        scorer, _ = d.auxiliaryfunctions.GetScorerName(cfg, trainFraction=xx, shuffle=self.shuffle)
+        # try to find the datafile corresponing to the selectiect trakcing method
+        videoname =  Path(video).stem
+        datafile, scorer, suffix = find_analyzed_data_generic(destfolder,
+                                                              videoname,
+                                                              scorer,
+                                                              filtered=False,
+                                                              track_method=self.track_method,
+                                                              type_file='pickle')
+
+        print("filepath = ", datafile, " \n scorer= ", scorer,"\n suffix = ", suffix)
+
+
+        self.manager, self.viz = deeplabcut.refine_tracklets(
+            self.config,
+            datafile.replace("pickle", "h5"),
+            video,
+            min_swap_len=int(self.minSwapHighlight.GetValue()),
+            trail_len=int(self.trailLength.GetValue()),
+            max_gap=int(self.maxGap.GetValue()))
+
+        self.update_status_videos_choice()
+
+    def update_status_videos_choice(self):
+        import deeplabcut as d
+        cfg = parse_yaml(self.config)
+        xx = cfg["TrainingFraction"][int(self.trainIndex)]
+        scorer, _ = d.auxiliaryfunctions.GetScorerName(cfg, trainFraction=xx, shuffle=self.shuffle)
+        # destfolder is where the h5 or pickle tracked is searched
+        destfolder = str(Path(video).parents[0]) if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+        for i,v in enumerate(self.videos):
+            videoname = Path(video).stem
+            try:
+                d.auxiliaryfunctions.find_analyzed_data(destfolder, videoname, scorer, track_method=self.track_method)
+                self.videosChoice.make_rat(i)
+            except:
+                    print(f'video {videoname} not processed')
+
+    def onChangeDestFolder(self, event):
+        if os.path.exist(self.destfolder.GetPath()) and os.path.isdir(self.destfolder.GetPath()):
+            self.update_status_videos_choice()
+
+    def onCreateTracks(self, event):
+        print('creating tracks for videos : ', self.videos)
+        destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+        import deeplabcut as d
+        if self.running_on_dir and self.makeTracksInAllVideos.GetValue():
+            d.stitch_tracklets(self.config,
+                               videos=[self.video_path],
+                               shuffle=self.shuffle,
+                               trainingsetindex=self.trainIndex,
+                               videotype=self.videoType.GetValue(),
+                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               track_method=self.track_method,
+                               destfolder=destfolder)
+        elif self.makeTracksInAllVideos:
+            d.stitch_tracklets(self.config,
+                               videos=self.videos,
+                               shuffle=self.shuffle,
+                               trainingsetindex=self.trainIndex,
+                               videotype=self.videoType.GetValue(),
+                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               track_method=self.track_method,
+                               destfolder=destfolder)
+        else:
+            video = [v for v in self.videos if v == self.videosChoice.GetStringSelection()]
+            d.stitch_tracklets(self.config,
+                               videos=video,
+                               shuffle=self.shuffle,
+                               trainingsetindex=self.trainIndex,
+                               videotype=self.videoType.GetValue(),
+                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               track_method=self.track_method,
+                               destfolder=destfolder)
+    def onChangeVideoType(self, event):
+        import deeplabcut as d
+        print('changes video type:')
+        if self.running_on_dir:
+            videos = deeplabcut.utils.GetVideoList("all", self.video_path, self.videoType.GetValue())
+            self.videos = list(filter( lambda x: "_full" not in x and "_labeled"  not in x, videos))
+            self.videosChoice.SetItems([Path(v).name for v in self.videos])
 
     def force_numeric_int(self, event, edit):
         keycode = event.GetKeyCode()
@@ -2846,7 +2972,7 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = RefineTracklets(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
+            frame = RefineTracklets(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection(), track_method=self.trackMethod.GetStringSelection())
         elif frame_type == 'filter predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()

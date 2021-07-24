@@ -18,18 +18,23 @@ class RatChoice(wx.Choice):
         if choice_index > len(self.choices_unicode)-1:
             raise IndexError(f'Index out of range list of choices has {len(self.choices_unicode)} elemnent')
         self.choices_unicode[choice_index] = self.RAT_EMOJI + self.choices_strings[choice_index]
-        selection = self.GetSelection()
-        self.SetItems(self.choices_unicode)
-        self.SetSelection(selection)
+        super(RatChoice, self).SetString(choice_index,
+                self.choices_unicode[choice_index])
 
     def make_circle(self, choice_index):
         if choice_index > len(self.choices_unicode)-1:
             raise IndexError(f'Index out of range list of choices has {len(self.choices_unicode)} elemnent')
         self.choices_unicode[choice_index] = self.CIRCLE_EMOJI + self.choices_strings[choice_index]
-        selection = self.GetSelection()
-        self.SetItems(self.choices_unicode)
-        self.SetSelection(selection)
+        super(RatChoice, self).SetString(choice_index,
+                self.choices_unicode[choice_index])
 
+    def SetItems(self, items_choices):
+        print('items choices: ', items_choices)
+        assert isinstance(items_choices, list) and len(items_choices)>0 and isinstance(items_choices[0], str), 'Items must be a non-empyt list of strings'
+        # deletes all items
+        self.choices_strings = items_choices
+        self.choices_unicode = [self.CIRCLE_EMOJI + c for c in self.choices_strings]
+        super(RatChoice, self).SetItems(self.choices_unicode)
 
 class ChoiceList(wx.Frame):
     def __init__(self, parent, title='choice check box'):
