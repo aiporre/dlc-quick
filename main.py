@@ -107,8 +107,6 @@ def get_radiobutton_status(radiobuttons):
     else:
         return [k for k, v in status.items() if v and not k == 'All']
 
-def paco():
-    e
 
 class CreateTrainingSet(wx.Frame):
     def __init__(self, parent, title='Create training set', config=None, *args, **kw):
@@ -454,6 +452,7 @@ class CreateTraining(wx.Frame):
                 d.cropimagesandlabels(
                     self.config, n_crops, (height, width), userfeedback=self.deleteFeedback.GetValue()
                 )
+            print('Creating network with net_type: ', self.networkChoice.GetValue())
             d.create_multianimaltraining_dataset(
                 self.config,
                 num_shuffles,
@@ -1722,9 +1721,9 @@ class RefineTracklets(wx.Frame):
         self.trailLength = wx.TextCtrl(self.panel, -1, "25")
         self.trailLength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.trailLength))
 
-        alphaLbl = wx.StaticText(self.panel, -1, "MEDIAN degree:")
-        self.alpha = wx.TextCtrl(self.panel, -1, "0.5")
-        self.alpha.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, self.alpha))
+        windowLengthLbl = wx.StaticText(self.panel, -1, "window length:")
+        self.windowLength = wx.TextCtrl(self.panel, -1, "4")
+        self.windowLength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.windowLength))
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
         self.saveAsCSV = wx.CheckBox(self.panel, -1, "")
@@ -1745,6 +1744,9 @@ class RefineTracklets(wx.Frame):
 
         buttonRefine = wx.Button(self.panel, label="Refine Tracks")
         buttonRefine.Bind(wx.EVT_BUTTON, self.onRefine)
+
+        buttonFilter = wx.Button(self.panel, label="Filter Tracks")
+        buttonFilter.Bind(wx.EVT_BUTTON, self.onFilter)
 
         # create the main sizer:
         mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -1789,8 +1791,8 @@ class RefineTracklets(wx.Frame):
         inputSizer.Add(filterTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.filterType, 0, wx.EXPAND | wx.ALL, 2)
         # inputSizer2 = wx.BoxSizer(wx.VERTICAL)
-        inputSizer.Add(alphaLbl, 0, wx.EXPAND | wx.ALL, 2)
-        inputSizer.Add(self.alpha, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(windowLengthLbl, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.windowLength, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(saveAsCSVLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.saveAsCSV, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -1800,6 +1802,8 @@ class RefineTracklets(wx.Frame):
 
         buttonSizer.Add(buttonTracks, 0, wx.CENTER | wx.ALL, 2)
         buttonSizer.Add(buttonRefine, 0, wx.CENTER | wx.ALL, 2)
+        buttonSizer.Add(buttonFilter, 0, wx.CENTER | wx.ALL, 2)
+
         # at the end of the add to the stuff sizer
         contentSizer.Add(inputSizer, 0, wx.ALL, 10)
         # contentSizer.Add(inputSizer2, 0, wx.ALL, 10)
@@ -1858,15 +1862,34 @@ class RefineTracklets(wx.Frame):
         xx = cfg["TrainingFraction"][int(self.trainIndex)]
         scorer, _ = d.auxiliaryfunctions.GetScorerName(cfg, trainFraction=xx, shuffle=self.shuffle)
         # destfolder is where the h5 or pickle tracked is searched
-        destfolder = str(Path(video).parents[0]) if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         for i,v in enumerate(self.videos):
-            videoname = Path(video).stem
+            destfolder = str(Path(v).parents[0]) if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+            videoname = Path(v).stem
             try:
                 d.auxiliaryfunctions.find_analyzed_data(destfolder, videoname, scorer, track_method=self.track_method)
                 self.videosChoice.make_rat(i)
             except:
                     print(f'video {videoname} not processed')
+    def onFilter(self, event):
+        import deeplabcut as d
+        shuffle = self.shuffle
+        trainingsetindex = self.trainIndex
+        tracker = self.track_method
+        window_length = int(self.windowLength.GetValue())
+        if window_length % 2 != 1:
+            raise ValueError("Window length should be odd.")
 
+        video = self.videos[self.videosChoice.GetSelection()]
+        d.filterpredictions(
+            self.config,
+            [video],
+            shuffle=shuffle,
+            trainingsetindex=trainingsetindex,
+            filtertype=self.filterType.GetStringSelection(),
+            track_method=tracker,
+            windowlength=window_length,
+            save_as_csv=True,
+        )
     def onChangeDestFolder(self, event):
         if os.path.exists(self.destfolder.GetPath()) and os.path.isdir(self.destfolder.GetPath()):
             self.update_status_videos_choice()
@@ -2876,7 +2899,6 @@ class AnalyzeVideos(wx.Frame):
         print("Videos predictions analyzed for pose destection assesment: ", videos)
         trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
         try:
-
             d.create_video_with_all_detections(
                 self.config,
                 videos,
