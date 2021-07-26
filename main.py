@@ -2283,7 +2283,7 @@ class LabelPredictions(wx.Frame):
 
         # color by (ma-projects)
         colorByLbl = wx.StaticText(self.panel, -1, "color code by:", size=wx.Size(self.WIDTHOFINPUTS, 25))
-        self.colorBy = wx.Choice(self.panel, -1, choices=['animal color', 'body color'])
+        self.colorBy = wx.Choice(self.panel, -1, choices=['label individuals', 'label bodyparts'])
         self.colorBy.Disable() if not cfg.get('multianimalproject', False) else None
         # track method
         trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
@@ -2363,6 +2363,7 @@ class LabelPredictions(wx.Frame):
 
         cfg = parse_yaml(self.config)
         if cfg.get('multianimalproject', False):
+            color_by = 'individual' if  self.colorBy.GetStringSelection() == 'label individuals' else 'bodypart'
             d.create_labeled_video(self.config,
                                    videos=self.videos,
                                    videotype=self.videoType.GetValue(),
@@ -2375,9 +2376,10 @@ class LabelPredictions(wx.Frame):
                                    outputframerate=outputframerate,
                                    draw_skeleton=self.drawSkeleton.GetValue(),
                                    destfolder=destfolder,
-                                   color_by=self.colorBy.GetStringSelection(),
+                                   color_by=color_by,
                                    track_method=self.trackMethod.GetStringSelection(),
-                                   trailpoints=int(self.trailPoints.GetValue()))
+                                   trailpoints=int(self.trailPoints.GetValue()),
+                                   )
         else:
             d.create_labeled_video(self.config,
                                    videos=self.videos,
@@ -2894,7 +2896,13 @@ class AnalyzeVideos(wx.Frame):
         destfolder = self.destfolder.GetPath()
         if destfolder == '':
             destfolder = None
-
+        track_method = self.trackMethod.GetStringSelection()
+        if track_method == "ellipse":
+            method = "el"
+        elif track_method == "box":
+            method = "bx"
+        else:
+            method = "sk"
         import deeplabcut as d
         print("Videos predictions analyzed for pose destection assesment: ", videos)
         trainindex, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
@@ -2907,6 +2915,21 @@ class AnalyzeVideos(wx.Frame):
                 trainingsetindex=trainindex,
                 destfolder=destfolder
             )
+            # FIXME: there is a bug in DLC error reshape(-1,3) tracklets have now 4 values instead, duno why
+            # cfg = parser_yaml(self.config)
+            # trainFraction = cfg["TrainingFraction"][int(trainindex)]
+            # scorer, _ = d.auxiliaryfunctions.GetScorerName(cfg, shuffle_number, trainFraction)
+            #
+            # for video in videos:
+            #     videofolder = os.path.splitext(video)[0]
+            #     video_name, ext = os.path.splitext(os.path.split(video)[1])
+            #     outputname = f"{video_name + scorer}_{method}.mp4"
+            #     if destfolder is None:
+            #         track_pickle = os.path.join(videofolder + scorer + f"_{method}.pickle")
+            #     else:
+            #         d.auxiliaryfunctions.attempttomakefolder(destfolder)
+            #         track_pickle = os.path.join(destfolder, str(Path(video).stem) + scorer + f"_{method}.pickle")
+            #     d.utils.create_video_from_pickled_tracks(video, track_pickle, destfolder=destfolder, output_name=outputname, pcutoff=float(cfg['pcutoff']))
             wx.MessageDialog(self.parent, 'Check the videos ".._full.mp4" and make a decision: \n \t 1. Pose detection is fine, then continue with the refinement of animal tracking \n \t 2. Pose detection not so good. Relabel/Extract new frames/Extact outliers and retrain your model, maybe use other model.', 'Test', wx.OK | wx.ICON_INFORMATION).ShowModal()
         except FileNotFoundError as e:
             print(f"{TerminalColors.FAIL}Error: {e} {TerminalColors.ENDC}")
