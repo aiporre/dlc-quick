@@ -1,5 +1,6 @@
 import argparse
 import glob
+import math
 import os
 import os.path
 from pathlib import Path
@@ -686,6 +687,15 @@ class LabelWhiskersFrame(BaseFrame):
             self.updateZoomPan()
             self.statusbar.SetStatusText("Pan Off")
 
+    def sort_from_click(self, x1, y1, points_set):
+        distances = [self.calc_distance(x1, y1, *point) for point in points_set]
+        closest_point = points_set[np.argmin(distances)]
+        middle_index = len(points_set)//2
+        point_index = points_set.index(closest_point)
+        if point_index > middle_index:
+            points_set = list(reversed(points_set))
+        return points_set
+
     def onClick(self, event):
         """
         This function adds labels and auto advances to the next label.
@@ -718,7 +728,7 @@ class LabelWhiskersFrame(BaseFrame):
                         closest_whisker = draggable_whisker
                         min_dist = dist
             if closest_whisker is not None:
-                self.on_select(closest_whisker.point_set)
+                self.on_select(self.sort_from_click(x1, y1, closest_whisker.point_set))
                 closest_whisker.delete_from_canvas()
 
 
