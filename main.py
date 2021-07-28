@@ -1239,14 +1239,14 @@ class TrainNetwork(wx.Frame):
         # import deeplabcut
         # cfg = deeplabcut.auxiliaryfunctions.read_config(self.config)
         config = parser_yaml(self.config)
-        return os.listdir(os.path.join(config['project_path'], 'dlc-models'))
+        return [f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models')) if not f.startswith('.')]
 
 
     def find_shuffles(self):
         config = parser_yaml(self.config)
         numbers = []
         iteration_selection = self.iteration.GetStringSelection()
-        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection)) if 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
+        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
         return files
 
     def read_fields(self, parse=True):
@@ -1546,7 +1546,7 @@ class EvaluaterNetwork(wx.Frame):
     def find_shuffles(self):
         config = parse_yaml(self.config)
         iteration_selection = self.iteration.GetStringSelection()
-        files = os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))
+        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
         return files
 
     def find_snapshots(self):
@@ -1932,7 +1932,7 @@ class RefineTracklets(wx.Frame):
 
 
 class FilterPredictions(wx.Frame):
-    def __init__(self, parent, title='filter predictions', config=None, videos=[], shuffle=''):
+    def __init__(self, parent, title='filter predictions', config=None, videos=[], shuffle='', track_method=None):
         assert len(videos)>0, 'No videos selected, please input which videos you want to analyze. Check videos_path and video type, or add videos to your video list'
         assert len(shuffle), "No shuffle selection as input, please check the configuration in the analyze_videos window"
         super(FilterPredictions, self).__init__(parent, title=title, size=(640, 500))
@@ -1940,6 +1940,7 @@ class FilterPredictions(wx.Frame):
         self.panel = MainPanel(self)
         self.config = config
         self.trainIndex, self.shuffle = extractTrainingIndexShuffle(self.config, shuffle)
+        self.track_method = track_method
         self.WIDTHOFINPUTS = 400
         config = parser_yaml(self.config)
         # # title in the panel
@@ -2042,12 +2043,21 @@ class FilterPredictions(wx.Frame):
         print('video_type: ', self.videoType.GetValue())
         print("destfolder: ", destfolder)
         import deeplabcut as d
-        d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
-                            shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
-                            windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
-                            ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
-                            alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
-                            destfolder=destfolder)
+        cfg = parse_yaml(self.config)
+        if cfg.get("multianimalproject", False):
+            d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
+                                shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
+                                windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
+                                ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
+                                alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
+                                destfolder=destfolder, track_method=self.track_method)
+        else:
+            d.filterpredictions(self.config, self.targetVideos, videotype=self.videoType.GetValue(),
+                                shuffle=self.shuffle, trainingsetindex=self.trainIndex, filtertype=filterType,
+                                windowlength=int(self.windowlength.GetValue()), p_bound=float(self.p_bound.GetValue()),
+                                ARdegree=int(self.ARdegree.GetValue()), MAdegree=int(self.MAdegree.GetValue()),
+                                alpha=float(self.alpha.GetValue()), save_as_csv=self.saveAsCSV.GetValue(),
+                                destfolder=destfolder)
         self.Close()
 
     def force_numeric_int(self, event, edit):
@@ -2836,7 +2846,7 @@ class AnalyzeVideos(wx.Frame):
     def find_shuffles(self):
         cfg = parse_yaml(self.config)
         iteration = 'iteration-' + str(cfg['iteration'])
-        files = os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration))
+        files = [f for f in os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
         print('files: ', files)
         return files
 
@@ -2979,7 +2989,12 @@ class AnalyzeVideos(wx.Frame):
             else:  # 'target videos list'
                 videos = get_videos(self.videosList)
             print('Videos: ', videos)
-            frame = FilterPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection())
+            cfg = parse_yaml(self.config)
+            if cfg.get('multianimalproject', False):
+                track_method = self.trackMethod.GetStringSelection()
+            else:
+                track_method = None
+            frame = FilterPredictions(self.GetParent(), config=self.config, videos=videos, shuffle=self.shuffle.GetStringSelection(), track_method=track_method)
         elif frame_type == 'plot predictions':
             if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
                 videos = self.targetVideos.GetPath()
