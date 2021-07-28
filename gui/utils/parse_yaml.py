@@ -2,15 +2,19 @@ import yaml
 from ruamel.yaml import YAML
 from numpy import round, array
 
-def parse_yaml(filepath):
+def parse_yaml(filepath, verbose=False):
     with open(filepath, 'r') as stream:
         try:
-            print('Reading yaml file: ', filepath )
+            if verbose:
+                print('Reading yaml file: ', filepath )
             content = yaml.safe_load(stream)
-            print(type(content),'--', content)
+            if verbose:
+                print(type(content),'--', content)
             return content
         except yaml.YAMLError as exc:
             print(exc)
+
+
 def create_whisking_config_template():
     yaml_str = """\
     # Dataset parameters
