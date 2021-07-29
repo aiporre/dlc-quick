@@ -1709,6 +1709,13 @@ class RefineTracklets(wx.Frame):
         self.numberOfTracks = wx.TextCtrl(self.panel, -1, "6")
         self.numberOfTracks.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.numberOfTracks))
 
+        # enables number of tracks which creates dummies ind1 and so on...(this has problems creating labeled_videos)
+        def enable_number_of_tracks(event):
+            self.numberOfTracks.Enable(self.enableNumberOfTracks.GetValue())
+        self.enableNumberOfTracks = wx.CheckBox(self.panel, -1, "Enable number of tracks input")
+        self.enableNumberOfTracks.SetValue(True)
+        self.enableNumberOfTracks.Bind(wx.EVT_CHECKBOX, enable_number_of_tracks)
+
         minSwapHighlightLbl = wx.StaticText(self.panel, -1, "Min swap length to hightlight:")
         self.minSwapHighlight = wx.TextCtrl(self.panel, -1, "2")
         self.minSwapHighlight.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.minSwapHighlight))
@@ -1722,7 +1729,7 @@ class RefineTracklets(wx.Frame):
         self.trailLength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.trailLength))
 
         windowLengthLbl = wx.StaticText(self.panel, -1, "window length:")
-        self.windowLength = wx.TextCtrl(self.panel, -1, "4")
+        self.windowLength = wx.TextCtrl(self.panel, -1, "5")
         self.windowLength.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.windowLength))
 
         saveAsCSVLbl = wx.StaticText(self.panel, -1, "Save as CSV:")
@@ -1776,6 +1783,7 @@ class RefineTracklets(wx.Frame):
         inputSizer.Add(self.makeTracksInAllVideos, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(numberOfTracksLbl, 0, wx.EXPAND | wx.ALL, 2)
         inputSizer.Add(self.numberOfTracks, 0, wx.EXPAND | wx.ALL, 2)
+        inputSizer.Add(self.enableNumberOfTracks, 0, wx.EXPAND | wx.ALL, 2)
 
         # ---line (refine tracks section)
         inputSizer.Add(wx.StaticLine(self.panel), 0, wx.EXPAND | wx.TOP | wx.BOTTOM, 10)
@@ -1897,6 +1905,7 @@ class RefineTracklets(wx.Frame):
     def onCreateTracks(self, event):
         print('creating tracks for videos : ', self.videos)
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
+        n_tracks = int(self.numberOfTracks.GetValue()) if self.enableNumberOfTracks.GetValue() else None
         import deeplabcut as d
         if self.running_on_dir and self.makeTracksInAllVideos.GetValue():
             d.stitch_tracklets(self.config,
@@ -1904,7 +1913,7 @@ class RefineTracklets(wx.Frame):
                                shuffle=self.shuffle,
                                trainingsetindex=self.trainIndex,
                                videotype=self.videoType.GetValue(),
-                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               n_tracks=n_tracks,
                                track_method=self.track_method,
                                destfolder=destfolder)
         elif self.makeTracksInAllVideos:
@@ -1913,7 +1922,7 @@ class RefineTracklets(wx.Frame):
                                shuffle=self.shuffle,
                                trainingsetindex=self.trainIndex,
                                videotype=self.videoType.GetValue(),
-                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               n_tracks=n_tracks,
                                track_method=self.track_method,
                                destfolder=destfolder)
         else:
@@ -2285,6 +2294,7 @@ class LabelPredictions(wx.Frame):
         colorByLbl = wx.StaticText(self.panel, -1, "color code by:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.colorBy = wx.Choice(self.panel, -1, choices=['label individuals', 'label bodyparts'])
         self.colorBy.Disable() if not cfg.get('multianimalproject', False) else None
+        self.colorBy.SetSelection(0)
         # track method
         trackMethodLbl = wx.StaticText(self.panel, -1, "track method:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.trackMethod = wx.Choice(self.panel, id=-1, choices=['skeleton', 'box', 'ellipse'])
@@ -2713,7 +2723,7 @@ class AnalyzeVideos(wx.Frame):
 
         listOrPathLbl = wx.StaticText(self.panel, -1, "Use list or path?")
         self.listOrPath = wx.Choice(self.panel, id=-1, choices=['target videos path', 'target videos list'])
-        self.listOrPath.SetSelection(0)
+        self.listOrPath.SetSelection(1)
 
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
         self.shuffle = wx.Choice(self.panel, -1, choices=self.find_shuffles())
