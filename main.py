@@ -16,7 +16,7 @@ import sys
 import matplotlib
 import glob
 
-from gui.model_generation import ContactModelGeneration
+from gui.contact_model_generation import ContactModelGeneration
 from gui.rat_choice_list import RatChoice
 from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors

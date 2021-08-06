@@ -6,9 +6,9 @@ import wx
 from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
 
-from gui.corrections_toolbox import CorrectionsFrame
+from gui.contact_corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import ContactDataset
-from gui.model_training import WhiskerModelTraining
+from gui.contact_model_training import WhiskerModelTraining
 from gui.utils.snapshot_index import get_snapshot_index
 
 
