@@ -261,31 +261,30 @@ class OscModelGeneration(BaseFrame):
             for f in files:
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
-                try:
-                    shuffle_index = int(shuffle_string.split('shuffle')[-1])
-                except ValueError as e:
-                    raise ValueError(f'Error: {e}. Cannot convert shuffle selection into shuffle index')
-                try:
-                    _pos1 = shuffle_string.rindex('trainset')+len('trainset')
-                    train_fraction = int(shuffle_string[_pos1:_pos1+2])
-                except ValueError as e:
-                    raise ValueError(f'Error: {e}. Cannot convert shuffle selection into train_fraction')
-                scorer, _ = deeplabcut.utils.GetScorerName(cfg, shuffle_index,train_fraction)
+
+                training_index, shuffle_number = extractTrainingIndexShuffle(self.config,
+                                                                             self.shuffle.GetStringSelection())
+                training_fraction = cfg["TrainingFraction"][training_index]
+                scorer, _ = deeplabcut.utils.GetScorerName(cfg, shuffle_number, training_fraction)
                 _projsuffix = shuffle_string.split('-')[0] # project name and date
+                scorer = scorer[:scorer.index(_projsuffix)]
                 # get the snapshot number at the end of the string
-                snapshot_string = self.snapshots.GetStringSelection()
-
+                snapshot_string = self.snapshot.GetStringSelection()
                 if snapshot_string == 'config.yaml':
-                    training_fractions = cfg['TrainingFraction']
-                    trainingsetindex = training_fractions.index(float(train_fraction)/100)
-                    snapshot_string = get_snapshot_index(self.config, shuffle=shuffle_index, trainingsetindex=trainingsetindex)
+                    snapshot_string = get_snapshot_index(self.config, shuffle=shuffle_number, trainingsetindex=training_index)
                 elif snapshot_string == 'latest':
-                    training_fractions = cfg['TrainingFraction']
-                    trainingsetindex = training_fractions.index(float(train_fraction)/100)
-                    snapshot_string = get_snapshots(self.config, shuffle=shuffle_index, trainingsetindex=trainingsetindex)[-1]
+                    snapshot_string = self.snapshots[-3]
                 snapshot_number = snapshot_string.split('-')[-1]
-
-                label_ending = f'{scorer}_{_projsuffix}shuffle{shuffle_index}_{snapshot_number}_el'
+                print('Scorer: ', scorer)
+                print('self.snapshots; ', self.snapshots)
+                print('_projcsubg', _projsuffix)
+                print('shuffle number ', shuffle_number)
+                print('snapshot number ', snapshot_number)
+                print('snapshot number: ', snapshot_number)
+                label_ending = f'{scorer}{_projsuffix}shuffle{shuffle_number}_{snapshot_number}_el'
+                print('>>>>>>>>>>>>  LABELING ENDING:: ', label_ending)
+                print('<<<<<<< file beingn: ', v_name)
+                print('f_name: ', f_name)
                 if f_name.startswith(v_name) and f_name.endswith(label_ending + ".h5") or f_name.endswith(snapshot_string + "_filtered.h5"):
                     labels_path = os.path.join(video_dir_path, f)
                     break
@@ -326,7 +325,7 @@ def show(config, startpath='.'):
 
 if __name__ == '__main__':
     #config = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/config.yaml'
-    config='/Users/ariel/funana/quick-dlc/maTEST-kunerag-2021-06-25/config.yaml'
+    config=r'D:\behaviorVids\projects-whisker\wtfree5ma-dlc2\wtfree5ma-agkuner-2021-06-25\config.yaml'
     startpath = os.getcwd()
     wd = Path(config).resolve().parents[0]
     os.chdir(str(wd))
