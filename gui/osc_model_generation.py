@@ -8,7 +8,7 @@ from deeplabcut.gui.widgets import WidgetPanel, BaseFrame
 from deeplabcut.utils import auxiliaryfunctions
 
 from gui.contact_corrections_toolbox import CorrectionsFrame
-from gui.dataset_generation import ContactDataset
+from gui.dataset_generation import OscilationDataset
 from gui.contact_model_training import WhiskerModelTraining
 from gui.utils.parse_yaml import extractTrainingIndexShuffle, parse_yaml
 from gui.utils.snapshot_index import get_snapshot_index, get_snapshots
@@ -246,46 +246,37 @@ class OscModelGeneration(BaseFrame):
         # generate pairs (video_path, labels_path)
         # if labels_path doesn't exists for video it will stop and ask you to analyze videos first
         pairs = []
+        # first computes the suffix/ending
+        # analyze files in video dir path looking for the labels_path pair.
+        cfg = parse_yaml(self.config)
+        shuffle_string = self.shuffle.GetStringSelection()
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config,
+                                                                     self.shuffle.GetStringSelection())
+        training_fraction = cfg["TrainingFraction"][training_index]
+        scorer, _ = deeplabcut.utils.GetScorerName(cfg, shuffle_number, training_fraction)
+        _projsuffix = shuffle_string.split('-')[0]  # project name and date
+        scorer = scorer[:scorer.index(_projsuffix)]
+        # get the snapshot number at the end of the string
+        snapshot_string = self.snapshot.GetStringSelection()
+        if snapshot_string == 'config.yaml':
+            snapshot_string = get_snapshot_index(self.config, shuffle=shuffle_number, trainingsetindex=training_index)
+        elif snapshot_string == 'latest':
+            snapshot_string = self.snapshots[-3]
+        snapshot_number = snapshot_string.split('-')[-1]
+        # TODO: inpyt should select _el suffix
+        label_ending = f'{scorer}{_projsuffix}shuffle{shuffle_number}_{snapshot_number}_el'
         for video_path in videos:
             if not video_path.endswith(self.videoType.GetValue()):
                 print('Doesn\'t end in ', self.videoType.GetValue(), 'skipping video_path: ', video_path)
                 continue
             video_dir_path = os.path.dirname(video_path)
             files = os.listdir(video_dir_path)
-
-            # analyze files in video dir path looking for the labels_path pair.
             labels_path = None
-            cfg = parse_yaml(self.config)
-            shuffle_string = self.shuffle.GetStringSelection()
-
             for f in files:
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
-
-                training_index, shuffle_number = extractTrainingIndexShuffle(self.config,
-                                                                             self.shuffle.GetStringSelection())
-                training_fraction = cfg["TrainingFraction"][training_index]
-                scorer, _ = deeplabcut.utils.GetScorerName(cfg, shuffle_number, training_fraction)
-                _projsuffix = shuffle_string.split('-')[0] # project name and date
-                scorer = scorer[:scorer.index(_projsuffix)]
-                # get the snapshot number at the end of the string
-                snapshot_string = self.snapshot.GetStringSelection()
-                if snapshot_string == 'config.yaml':
-                    snapshot_string = get_snapshot_index(self.config, shuffle=shuffle_number, trainingsetindex=training_index)
-                elif snapshot_string == 'latest':
-                    snapshot_string = self.snapshots[-3]
-                snapshot_number = snapshot_string.split('-')[-1]
-                print('Scorer: ', scorer)
-                print('self.snapshots; ', self.snapshots)
-                print('_projcsubg', _projsuffix)
-                print('shuffle number ', shuffle_number)
-                print('snapshot number ', snapshot_number)
-                print('snapshot number: ', snapshot_number)
-                label_ending = f'{scorer}{_projsuffix}shuffle{shuffle_number}_{snapshot_number}_el'
-                print('>>>>>>>>>>>>  LABELING ENDING:: ', label_ending)
-                print('<<<<<<< file beingn: ', v_name)
-                print('f_name: ', f_name)
-                if f_name.startswith(v_name) and f_name.endswith(label_ending + ".h5") or f_name.endswith(snapshot_string + "_filtered.h5"):
+                # TODO: input should select filtered
+                if f_name.startswith(v_name) and f_name.endswith(label_ending + "_filtered.h5"): #or f_name.endswith(snapshot_string + "_filtered.h5"):
                     labels_path = os.path.join(video_dir_path, f)
                     break
             # labels_path coulnd be found then stop generation.
@@ -299,8 +290,8 @@ class OscModelGeneration(BaseFrame):
         # if pairs generated then run generation fo files for each pair
         for v_path, l_path in pairs:
             print(f'video path = {v_path} label path =  {l_path}')
-            ContactDataset(labels_path=l_path, video_path=v_path,
-                           dest_path=self.destfolder.GetPath()).generate_dataset()
+            OscilationDataset(labels_path=l_path, video_path=v_path,
+                              dest_path=self.destfolder.GetPath()).generate_dataset()
 
     def on_new_frame(self, event, frame_type):
         print('open new window: ', frame_type)
