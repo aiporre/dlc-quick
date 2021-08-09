@@ -82,7 +82,7 @@ class OscModelGeneration(BaseFrame):
         destfolderLbl = wx.StaticText(self.panel, -1, "Dataset Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
         self.destfolder.SetPath(
-            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration'])))
+            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration']), 'osc_dataset'))
 
         # # Button components..
 
