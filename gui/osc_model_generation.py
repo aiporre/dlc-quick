@@ -10,6 +10,7 @@ from deeplabcut.utils import auxiliaryfunctions
 from gui.contact_corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import OscilationDataset
 from gui.contact_model_training import WhiskerModelTraining
+from gui.osc_corrections_toolbox import OscCorrections
 from gui.utils.parse_yaml import extractTrainingIndexShuffle, parse_yaml
 from gui.utils.snapshot_index import get_snapshot_index, get_snapshots
 
@@ -82,7 +83,7 @@ class OscModelGeneration(BaseFrame):
         destfolderLbl = wx.StaticText(self.panel, -1, "Dataset Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
         self.destfolder.SetPath(
-            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration']), 'osc_dataset'))
+            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration']), 'osc-dataset'))
 
         # # Button components..
 
@@ -299,8 +300,7 @@ class OscModelGeneration(BaseFrame):
             print('new frame not specified in button!! ')
             return
         elif frame_type == 'make corrections':
-            # frame = FilterPredictions(self.GetParent(), config=self.config)
-            frame = CorrectionsFrame(self.GetParent(), self.config, ['*.png'])
+            frame = OscCorrections(self.GetParent(),config=self.config)
         elif frame_type == 'train model':
             frame = WhiskerModelTraining(self.GetParent(), config=self.config)
         else:

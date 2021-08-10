@@ -164,6 +164,7 @@ class OscilationDataset:
             whisking_range = (freqs < 15) * (freqs > 3)
             not_whisking_range = ~(whisking_range)
             if sxx[whisking_range].max() > -3.5 and sxx[whisking_range].max() - 2.49 > sxx[not_whisking_range].mean():
+                # TODO: window 0.125 is harccode
                 window_times.append([offset / fs + tt - 0.125,
                                      offset / fs + tt + 0.125,
                                      offset + i * nperseg,
