@@ -143,6 +143,16 @@ class VideoFrame(BaseFrame):
         self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.vid[slider_value], 'New title')
         self.figure.canvas.draw()
 
+    def update_video_path(self, video_path):
+        # load video
+        if os.path.exists(video_path) and video_path.endswith('.npy'):
+            self.data = np.load(video_path, allow_pickle=True)
+        else:
+            raise FileExistsError(f'File {video_path} do not exist.')
+        self.vid = self.data[()]['data']
+        self.window_index = self.data[()]['window_index']
+
+
 class OscCorrections(BaseFrame):
     def __init__(self, parent, title='Osc Whisker Corrections', config=None):
         super(OscCorrections, self).__init__(parent=parent, frame_title=title)
@@ -306,6 +316,7 @@ class OscCorrections(BaseFrame):
         frame.Show()
 
     def onShowSpec(self, event):
+        print('show spec for sample: ', self.sampleSelected)
         freqs_r, time_r, spectrogram_r = self.samples[self.sampleSelected]['spectrogram_r']
         freqs_l, time_l, spectrogram_l = self.samples[self.sampleSelected]['spectrogram_l']
         plt.figure()
@@ -434,6 +445,7 @@ class OscCorrections(BaseFrame):
     def update_selected_sample(self, event):
         if self.listSamples.GetItemCount() > 0:
             selected_item = self.listSamples.GetFirstSelected()
+            print('update selected sample: ', selected_item)
             self.apply_sample_selection(selected_item)
 
     def apply_sample_selection(self, sample_selection_index):
