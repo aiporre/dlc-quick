@@ -116,7 +116,7 @@ class CorrectionsFrame(BaseFrame):
 
         self.choice_panel = ScrollPanel(vSplitter)
         self.action_box, self.action_rdb = self.choice_panel.add_radio_buttons()
-        self.action_rdb.Bind(wx.EVT_RADIOBUTTON, self.onActionSelection)
+        self.action_rdb.Bind(wx.EVT_RADIOBOX, self.onActionSelection)
         self.action_rdb.Enable(False)
 
 
