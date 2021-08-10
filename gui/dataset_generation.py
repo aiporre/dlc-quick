@@ -58,8 +58,10 @@ class OscilationDataset:
         # read data frame from labels
         self.data = pd.read_hdf(self.labels_path)
         # create destination directory if doesn't exists
-        if not os.path.exists(self.dest_path):
-            os.makedirs(dest_path, exist_ok=True)
+        if not os.path.exists(os.path.join(self.dest_path, 'positive')):
+            os.makedirs(os.path.join(self.dest_path, 'positive'), exist_ok=True)
+        if not os.path.exists(os.path.join(self.dest_path, 'negative')):
+            os.makedirs(os.path.join(self.dest_path, 'negative'), exist_ok=True)
         self.bodyparts = self.data.columns.get_level_values(2).unique().values
         self.scorer = self.data.columns.get_level_values(0).unique().values[0]
         self.individuals = self.data.columns.get_level_values(1).unique().values
@@ -166,13 +168,13 @@ class OscilationDataset:
                                      offset / fs + tt + 0.125,
                                      offset + i * nperseg,
                                      offset + min((i + 1) * nperseg, len(y))])
-        return window_times
+        return window_times, freqs, times, Sxx_db
 
     def generate_dataset(self, fs=240, slow_motion=False):
         df_angles_r = self.calculate_angles_side(side='R')
         df_angles_l = self.calculate_angles_side(side='L')
-        windows_r = self.get_oscilation_windows(df_angles_r, fs=fs)
-        windows_l = self.get_oscilation_windows(df_angles_l, fs=fs)
+        windows_r, freqs_r, times_r, Sxx_db_r = self.get_oscilation_windows(df_angles_r, fs=fs)
+        windows_l, freqs_l, times_l, Sxx_db_l = self.get_oscilation_windows(df_angles_l, fs=fs)
         windows = windows_r + windows_l
         # unique windows
         windows_unique = []
@@ -181,7 +183,6 @@ class OscilationDataset:
             # check if exists in unique_list or not
             if x not in windows_unique:
                 windows_unique.append(x)
-        print(windows_unique)
         # make a vid array
         vid = VideoReaderArray(self.video_path)
         print('metadata : ', vid.metadata)
@@ -189,19 +190,30 @@ class OscilationDataset:
         H, W, C = vid[0].shape
         fps_out = 30 if slow_motion else fs
         # generates positive videos
-        positive_frames = []
-        for t0, t1, index0, index1 in windows_unique:
-            positive_frames.append(list(range(index0, index1)))
         video_counter = 0
-        for pf in positive_frames:
+        for t0, t1, index0, index1 in windows_unique:
+            positive_frames = list(range(index0, index1))
             clip_vname = f'whisker_clip_{self.vname_hash}_{video_counter}.avi'
             print('creating clip: ', clip_vname)
-            print('path to clip: ', os.path.join(self.dest_path, clip_vname), 'frames ', len(pf), 'shape ', (H,W,C))
-            writer = write_video(os.path.join(self.dest_path, clip_vname), (H, W, C), fps=fps_out)
-            for i in pf:
+            clip_video_path = os.path.join(self.dest_path, 'positive', clip_vname)
+            print('path to clip: ', clip_video_path, 'frames ', len(positive_frames), 'shape ', (H, W, C))
+            writer = write_video(clip_video_path, (H, W, C), fps=fps_out)
+            for i in positive_frames:
                 writer.write(vid[i].astype('uint8'))
             writer.release()
             video_counter += 1
+            vid_clip = read_video(clip_video_path)
+            clip_data = {'data': vid_clip,
+                         'spectrogram_r': [freqs_r, times_r, Sxx_db_r],
+                         'spectrogram_l': [freqs_l, times_l, Sxx_db_l],
+                         't0': t0,
+                         't1': t1,
+                         'index0':index0,
+                         'index1': index1,
+                         'window_time': t1-t0,
+                         'window_index': index1-index0,
+                         'video_name': os.path.basename(self.video_path)}
+            np.save(clip_video_path.replace('.avi', '.npy'), clip_data)
 
 
 class ContactDataset:
