@@ -171,19 +171,47 @@ class OscilationDataset:
                                      offset + min((i + 1) * nperseg, len(y))])
         return window_times, freqs, times, Sxx_db
 
+    def get_negative_window(self, df_angles, windows, fs):
+        min_index, max_index = df_angles.index.min(), df_angles.index.max()
+        negative_windows = []
+        nperseg = fs // 4
+        for _ in windows:
+            n0_neg = np.random.randint(min_index, max_index)
+            n1_neg = n0_neg + int(nperseg)
+            overlaps = True
+            for t0, t1, n0, n1 in windows:
+                if not any([n0 < n0_neg and n1_neg < n1, n0_neg < n0 and n1_neg < n1 and n0 < n1_neg,
+                        n0 < n0_neg and n1 < n1_neg and n0_neg < n1, n0_neg < n0 and n1 < n1_neg]):
+                    overlaps = False
+            if not overlaps:
+                negative_windows.append([n0 / fs ,
+                                     n0 / fs + nperseg / fs,
+                                     n0,
+                                     min(n1, max_index)])
+        return negative_windows
+
+
     def generate_dataset(self, fs=240, slow_motion=False):
         df_angles_r = self.calculate_angles_side(side='R')
         df_angles_l = self.calculate_angles_side(side='L')
         windows_r, freqs_r, times_r, Sxx_db_r = self.get_oscilation_windows(df_angles_r, fs=fs)
+        windows_r_neg = self.get_negative_window(df_angles_r, windows_r, fs)
         windows_l, freqs_l, times_l, Sxx_db_l = self.get_oscilation_windows(df_angles_l, fs=fs)
+        windows_l_neg = self.get_negative_window(df_angles_l, windows_l, fs)
         windows = windows_r + windows_l
+        windows_neg = windows_r_neg + windows_l_neg
         # unique windows
         windows_unique = []
+        windows_unique_neg = []
         # traverse for all elements
         for x in windows:
             # check if exists in unique_list or not
             if x not in windows_unique:
                 windows_unique.append(x)
+        for x in windows_neg:
+            # check if exists in unique_list or not
+            if x not in windows_unique_neg:
+                windows_unique_neg.append(x)
         # make a vid array
         vid = VideoReaderArray(self.video_path)
         print('metadata : ', vid.metadata)
@@ -215,6 +243,31 @@ class OscilationDataset:
                          'window_index': index1-index0,
                          'video_name': os.path.basename(self.video_path)}
             np.save(clip_video_path.replace('.avi', '.npy'), clip_data)
+        # saving the negative windows:
+        for t0, t1, index0, index1 in windows_unique_neg:
+            positive_frames = list(range(index0, index1))
+            clip_vname = f'whisker_clip_{self.vname_hash}_{video_counter}.avi'
+            print('creating clip: ', clip_vname)
+            clip_video_path = os.path.join(self.dest_path, 'negative', clip_vname)
+            print('path to clip: ', clip_video_path, 'frames ', len(positive_frames), 'shape ', (H, W, C))
+            writer = write_video(clip_video_path, (H, W, C), fps=fps_out)
+            for i in positive_frames:
+                writer.write(vid[i].astype('uint8'))
+            writer.release()
+            video_counter += 1
+            vid_clip = read_video(clip_video_path)
+            clip_data = {'data': vid_clip,
+                         'spectrogram_r': [freqs_r, times_r, Sxx_db_r],
+                         'spectrogram_l': [freqs_l, times_l, Sxx_db_l],
+                         't0': t0,
+                         't1': t1,
+                         'index0':index0,
+                         'index1': index1,
+                         'window_time': t1-t0,
+                         'window_index': index1-index0,
+                         'video_name': os.path.basename(self.video_path)}
+            np.save(clip_video_path.replace('.avi', '.npy'), clip_data)
+
 
 
 class ContactDataset:
