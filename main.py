@@ -17,6 +17,7 @@ import matplotlib
 import glob
 
 from gui.contact_model_generation import ContactModelGeneration
+from gui.osc_model_generation import OscModelGeneration
 from gui.rat_choice_list import RatChoice
 from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors
@@ -3288,7 +3289,15 @@ class MainFrame(wx.Frame):
         d.merge_datasets(self.configPath.GetPath())
 
     def onCreateWhiskingModel(self, event):
-        frame = ContactModelGeneration(self.Parent, self.startpath, config=self.configPath.GetPath())
+        cfg = parse_yaml(self.configPath.GetPath())
+        assert len(cfg.get('project_type', '')) >0, 'Project type is not configured please take care of your config.yaml'
+        project_type = cfg['project_type']
+        if project_type == 'contact':
+            frame = ContactModelGeneration(self.Parent, self.startpath, config=self.configPath.GetPath())
+        elif project_type in ['motion', 'whisking']:
+            frame = OscModelGeneration(self.Parent, self.startpath, config=self.configPath.GetPath())
+        else:
+            raise Exception('Project type is not correct: ', project_type)
         frame.Show()
 
     def on_config_path_picked(self, event):
