@@ -1904,11 +1904,11 @@ class RefineTracklets(wx.Frame):
             self.update_status_videos_choice()
 
     def onCreateTracks(self, event):
-        print('creating tracks for videos : ', self.videos)
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         n_tracks = int(self.numberOfTracks.GetValue()) if self.enableNumberOfTracks.GetValue() else None
         import deeplabcut as d
         if self.running_on_dir and self.makeTracksInAllVideos.GetValue():
+            print('creating tracks from the video in sht epath:  ', self.video_path)
             d.stitch_tracklets(self.config,
                                videos=[self.video_path],
                                shuffle=self.shuffle,
@@ -1917,7 +1917,8 @@ class RefineTracklets(wx.Frame):
                                n_tracks=n_tracks,
                                track_method=self.track_method,
                                destfolder=destfolder)
-        elif self.makeTracksInAllVideos:
+        elif self.makeTracksInAllVideos.GetValue():
+            print('creating tracks for videos : ', self.videos)
             d.stitch_tracklets(self.config,
                                videos=self.videos,
                                shuffle=self.shuffle,
@@ -1927,7 +1928,8 @@ class RefineTracklets(wx.Frame):
                                track_method=self.track_method,
                                destfolder=destfolder)
         else:
-            video = [v for v in self.videos if v == self.videosChoice.GetStringSelection()]
+            video = [v for v in self.videos if self.videosChoice.GetStringSelection()[1:] in v]
+            print('creating tracks for video ', video )
             d.stitch_tracklets(self.config,
                                videos=video,
                                shuffle=self.shuffle,
