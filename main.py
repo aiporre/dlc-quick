@@ -1704,7 +1704,7 @@ class RefineTracklets(wx.Frame):
         self.videosChoice = RatChoice(self.panel, -1, choices=[Path(v).name for v in self.videos])
 
         self.makeTracksInAllVideos = wx.CheckBox(self.panel, -1, "Create tracks all files:")
-        self.makeTracksInAllVideos.SetValue(True)
+        self.makeTracksInAllVideos.SetValue(False)
 
         numberOfTracksLbl = wx.StaticText(self.panel, -1, "Number of track (individuals in video):")
         self.numberOfTracks = wx.TextCtrl(self.panel, -1, "6")
