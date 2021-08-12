@@ -1707,7 +1707,7 @@ class RefineTracklets(wx.Frame):
         self.makeTracksInAllVideos.SetValue(False)
 
         numberOfTracksLbl = wx.StaticText(self.panel, -1, "Number of track (individuals in video):")
-        self.numberOfTracks = wx.TextCtrl(self.panel, -1, "6")
+        self.numberOfTracks = wx.TextCtrl(self.panel, -1, "8")
         self.numberOfTracks.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, self.numberOfTracks))
 
         # enables number of tracks which creates dummies ind1 and so on...(this has problems creating labeled_videos)
