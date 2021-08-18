@@ -947,6 +947,9 @@ class TrainNetwork(wx.Frame):
         save_itersLbl = wx.StaticText(self.panel, -1, "save_iters")
         self.save_iters = wx.SpinCtrlDouble(self.panel, id=-1, min=1, max=sys.maxsize,
                                             initial=pose_config['save_iters'], inc=1)
+        gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
+        self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'] + get_available_gpus())
+        self.gpusAvailable.SetSelection(0)
 
         # inputSizer.Add(max_itersLbl, 0, wx.EXPAND, 2)
         # inputSizer.Add(self.max_iters, 0, wx.EXPAND, 2)
@@ -1104,6 +1107,8 @@ class TrainNetwork(wx.Frame):
         inputSizerCenter.Add(self.save_iters, 0, wx.EXPAND, 2)
         inputSizerCenter.Add(max_itersLbl, 0, wx.EXPAND, 2)
         inputSizerCenter.Add(self.max_iters, 0, wx.EXPAND, 2)
+        inputSizerCenter.Add(gpusAvailableLbl,0,wx.EXPAND, 2)
+        inputSizerCenter.Add(self.gpusAvailable, 0, wx.EXPAND,2 )
         inputSizerCenter.Add(net_typeLbl, 0, wx.EXPAND, 2)
         inputSizerCenter.Add(self.net_type, 0, wx.EXPAND, 2)
         inputSizerCenter.Add(initWeightsLbl, 0, wx.EXPAND, 2)
@@ -1230,8 +1235,13 @@ class TrainNetwork(wx.Frame):
             d.auxiliaryfunctions.write_config(self.config, {'iteration': iterationNum})
         print('trainingIndex: ', trainingIndex)
         print('shuffle: ', shuffle)
+        if self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()) == 'None':
+            gputouse = None
+        else:
+            gputouse = int(self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()))
+
         d.train_network(self.config, shuffle=shuffle, trainingsetindex=trainingIndex, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
-                        saveiters=pose_config['save_iters'])
+                        saveiters=pose_config['save_iters'], gputouse=gputouse)
         print('Training finished')
 
     def find_iterations(self):
@@ -1830,6 +1840,9 @@ class RefineTracklets(wx.Frame):
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
 
+        # update list of videos to choice
+        self.update_status_videos_choice()
+
     def onRefine(self, event):
         print('Refine videos: ')
         # get video from videos list (files with fullpath)
@@ -1878,7 +1891,7 @@ class RefineTracklets(wx.Frame):
                 d.auxiliaryfunctions.find_analyzed_data(destfolder, videoname, scorer, track_method=self.track_method)
                 self.videosChoice.make_rat(i)
             except:
-                    print(f'video {videoname} not processed')
+                print(f'video {videoname} not processed')
     def onFilter(self, event):
         import deeplabcut as d
         shuffle = self.shuffle

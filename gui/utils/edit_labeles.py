@@ -83,7 +83,7 @@ class Labels:
 
 
 def edit_labels(config, video=None, remove=False, individuals=None, rollback=False):
-    cfg = parse_yaml("/Users/ariel/funana/projects-whisker/wtfree5ma-agkuner-2021-06-25/config.yaml")
+    cfg = parse_yaml(config)
     if video is None:
         print('editing all videos')
         videos = cfg['video_sets'].keys()
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('config', metavar='path to config.yaml', type=str,
                         help='path to the config.yaml')
     parser.add_argument('--video', metavar='video', type=str, default=None,
-                        help='video path to video to analyze or directory containing .avi videos (default analyzed_videos)')
+                        help='video path to video to analyze or directory containing .avi videos (default None)')
     parser.add_argument('--remove', action='store_true',
                         help='Remove individual?')
     parser.add_argument('--individuals', metavar='snapshot', type=str, nargs='+', default=None,
