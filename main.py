@@ -95,7 +95,11 @@ def isfloat(value):
 def get_available_gpus():
     from tensorflow.python.client import device_lib
     local_device_protos = device_lib.list_local_devices()
-    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+    gpus_strings = [x.name for x in local_device_protos if x.device_type == 'GPU']
+    def get_last_number(gpu_string):
+        tokens = [s for s in gpu_string.split(':') if s.isdigit()]
+        return tokens[-1]
+    return [get_last_number(gpu) for gpu in gpus_strings]
 
 
 def get_radiobutton_status(radiobuttons):
@@ -1238,7 +1242,7 @@ class TrainNetwork(wx.Frame):
         if self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()) == 'None':
             gputouse = None
         else:
-            gputouse = int(self.gpusAvailable.GetString(self.gpusAvailable.GetCurrentSelection()))
+            gputouse = int(self.gpusAvailable.GetStringSelection())
 
         d.train_network(self.config, shuffle=shuffle, trainingsetindex=trainingIndex, maxiters=int(self.max_iters.GetValue()), displayiters=pose_config['display_iters'],
                         saveiters=pose_config['save_iters'], gputouse=gputouse)
