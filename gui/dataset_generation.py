@@ -181,11 +181,11 @@ class OscilationDataset:
         while attemps < 10 and len(negative_windows) < len(windows):
             n0_neg = np.random.randint(min_index, max_index)
             n1_neg = n0_neg + int(nperseg)
-            overlaps = True
+            overlaps = False
             for t0, t1, n0, n1 in windows:
-                if not any([n0 < n0_neg and n1_neg < n1, n0_neg < n0 and n1_neg < n1 and n0 < n1_neg,
-                        n0 < n0_neg and n1 < n1_neg and n0_neg < n1, n0_neg < n0 and n1 < n1_neg]):
-                    overlaps = False
+                if n0_neg < n1 and n0 < n1_neg:
+                    overlaps = True
+                    break
             if not overlaps:
                 negative_windows.append([n0_neg / fs ,
                                      n1_neg / fs,
