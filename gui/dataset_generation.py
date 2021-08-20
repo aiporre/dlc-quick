@@ -175,7 +175,10 @@ class OscilationDataset:
         min_index, max_index = df_angles.index.min(), df_angles.index.max()
         negative_windows = []
         nperseg = fs // 4
-        for _ in windows:
+        attemps = 0
+        # FIXME: negative segments can be overlapping also..the solution is add neg to windows list
+        # FIXME: but it may be cases where the positive windows left no room
+        while attemps < 10 and len(negative_windows) < len(windows):
             n0_neg = np.random.randint(min_index, max_index)
             n1_neg = n0_neg + int(nperseg)
             overlaps = True
@@ -184,10 +187,10 @@ class OscilationDataset:
                         n0 < n0_neg and n1 < n1_neg and n0_neg < n1, n0_neg < n0 and n1 < n1_neg]):
                     overlaps = False
             if not overlaps:
-                negative_windows.append([n0 / fs ,
-                                     n0 / fs + nperseg / fs,
-                                     n0,
-                                     min(n1, max_index)])
+                negative_windows.append([n0_neg / fs ,
+                                     n1_neg / fs,
+                                     n0_neg,
+                                     min(n1_neg, max_index)])
         return negative_windows
 
 
