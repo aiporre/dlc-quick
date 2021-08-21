@@ -2996,9 +2996,11 @@ class AnalyzeVideos(wx.Frame):
             print('Snapshot index is not correct. Did you train your network? Select a correct Snapshot Index in the config.yaml or in the evaluation window in the main menu.')
         cfg = parse_yaml(self.config)
         if cfg.get('multianimalproject', False):
+            identity_only = cfg.get('identity', False)
             d.convert_detections2tracklets(self.config, videos=videos, videotype=self.videoType.GetValue(),
                                            shuffle=shuffle_number, trainingsetindex=trainindex,
-                                           track_method=self.trackMethod.GetStringSelection(), overwrite=True)
+                                           track_method=self.trackMethod.GetStringSelection(),
+                                           overwrite=True, identity_only=identity_only)
 
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
