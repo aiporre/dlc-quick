@@ -170,7 +170,27 @@ class OscilationDataset:
                                      offset + i * nperseg,
                                      offset + min((i + 1) * nperseg, len(y))])
         return window_times, freqs, times, Sxx_db
+    @staticmethod
+    def calculate_overlap(window1, window2):
+        '''
+        calculate the overlap in window1 from window2
+        '''
+        at0, at1, an0, an1 = window1
+        bt0, bt1, bn0, bn1 = window2
+        x = range(an0, an1+1)
+        y = range(bn0, bn1+1)
+        xs = set(x)
+        insersection = xs.intersection(y)
+        return insersection
 
+    @staticmethod
+    def is_windows_overlap(windows, x0, x1):
+        overlaps = False
+        for t0, t1, n0, n1 in windows:
+            if x0 < n1 and n0 < x1:
+                overlaps = True
+                break
+        return overlaps
     def get_negative_window(self, df_angles, windows, fs):
         min_index, max_index = df_angles.index.min(), df_angles.index.max()
         negative_windows = []
@@ -181,12 +201,7 @@ class OscilationDataset:
         while attemps < 10 and len(negative_windows) < len(windows):
             n0_neg = np.random.randint(min_index, max_index)
             n1_neg = n0_neg + int(nperseg)
-            overlaps = False
-            for t0, t1, n0, n1 in windows:
-                if n0_neg < n1 and n0 < n1_neg:
-                    overlaps = True
-                    break
-            if not overlaps:
+            if not self.is_windows_overlap(windows, n0_neg, n1_neg):
                 negative_windows.append([n0_neg / fs ,
                                      n1_neg / fs,
                                      n0_neg,
@@ -209,11 +224,21 @@ class OscilationDataset:
         # traverse for all elements
         for x in windows:
             # check if exists in unique_list or not
-            if x not in windows_unique:
+            x_overlap = []
+            for w in windows_unique:
+                x_overlap += self.calculate_overlap(x, w)
+            x_overlap = set(x_overlap)
+            # if the overlap is less than 50%
+            if len(x_overlap) / (1 + x[3] - x[2]) < 0.5:
                 windows_unique.append(x)
         for x in windows_neg:
             # check if exists in unique_list or not
-            if x not in windows_unique_neg:
+            x_overlap = []
+            for w in windows_unique_neg:
+                x_overlap += self.calculate_overlap(x, w)
+            x_overlap = set(x_overlap)
+            # if the overlap is less than 50%
+            if len(x_overlap)/(1+x[3]-x[2])<0.5:
                 windows_unique_neg.append(x)
         # make a vid array
         vid = VideoReaderArray(self.video_path)
