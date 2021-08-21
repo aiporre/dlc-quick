@@ -1,5 +1,7 @@
 import pandas as pd
 import cv2
+from scipy.interpolate import interp1d
+
 from deeplabcut.utils import VideoReader
 from matplotlib.image import imsave
 import os
@@ -141,7 +143,13 @@ class OscilationDataset:
 
     # this function resumes the process to get oscilation windows that will be used actually in analysis
     def get_oscilation_windows(self, df_angles, fs):
-        mean_angle = df_angles.mean(axis=1).interpolate().dropna(axis=0)
+        mean_angle = df_angles.mean(axis=1)
+        mean_angle = mean_angle.dropna()
+        x = mean_angle.values
+        n = mean_angle.index
+        fx = interp1d(n, x, kind='linear')
+        n_new = range(mean_angle.index.min(), mean_angle.index.max() + 1)
+        mean_angle = pd.Series(data=fx(n_new), index=n_new)
         x = mean_angle.values
         # filtering
         lowcut = 3.0  # Hz
