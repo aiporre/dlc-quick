@@ -140,17 +140,17 @@ class WhiskerModelTraining(BaseFrame):
         self.customNetId = wx.TextCtrl(self.panel, -1, "", size=wx.Size(int(0.3*self.gui_size[0]), 25))
         self.customNetId.Bind(wx.EVT_CHAR, lambda event: self.force_alpha_numeric(event, self.customNetId))
 
-        # Initial datapath calculation, same as the training, it taked form the training config file or
+        # Initial datapath calculation, same as the training, it took from the training config file or
         # form the one in training datasets, at the given iteration.
         # training_config_file overrides this initial value calculated.
         datapathLbl = wx.StaticText(self.panel, -1, "Dataset path:", size=wx.Size(int(0.8*self.gui_size[0]), 25))
         self.datapath = wx.DirPickerCtrl(self.panel, -1)
-        datapath_initial = os.path.join(self.project_path, 'training-datasets', self.iterations[self.iteration.GetSelection()],'contact-dataset')
+        datapath_initial = os.path.join(self.project_path, 'training-datasets', self.iterations[self.iteration.GetSelection()],'osc-dataset')
 
         if len(self.training_cfg['datapath']) == 0  and os.path.exists(datapath_initial):
             self.datapath.SetPath(datapath_initial)
             self.training_cfg['datapath'] = datapath_initial
-            write_whisking_config(self.training_config_path, self.training_cfg)
+            write_whisking_config(self.training_config_path, self.training_cfg, project_type='osc')
         else:
             self.datapath.SetPath(self.training_cfg['datapath'])
 
@@ -271,17 +271,16 @@ class WhiskerModelTraining(BaseFrame):
 
     def onSaveConfig(self, event):
         print('saving config dataset: :) ')
-        tf.enable_eager_execution()
         # the model_output_path is where the weights and logs are saved
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
         # applies configurations
         self.training_cfg['datapath'] = self.datapath.GetPath()
-        self.training_cfg['enable_eager'] = self.numFrames.GetValue()
+        self.training_cfg['num_frames'] = self.numFrames.GetValue()
         self.training_cfg['image_dim_height'] = int(self.imageDimHeight.GetValue())
         self.training_cfg['image_dim_width'] = int(self.imageDimWidth.GetValue())
         self.training_cfg['batch_size'] = int(self.batchSize.GetValue())
         self.training_cfg['learning_rate'] = float(self.learningRate.GetValue())
-        write_whisking_config(self.training_config_path, self.training_cfg)
+        write_whisking_config(self.training_config_path, self.training_cfg, project_type='osc')
 
         self.model_trainer = Trainer(self.training_cfg['datapath'],
                                      output_path=model_output_path,
