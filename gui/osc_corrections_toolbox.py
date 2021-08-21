@@ -287,7 +287,6 @@ class OscCorrections(BaseFrame):
         self.samples = {}
         self.sampleSelected = None
         self.update_sample_list(None)
-        self.statusbar.SetStatusText()
 
     def find_iterations(self):
         '''find the iterations given a config file.'''

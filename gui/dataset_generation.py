@@ -119,7 +119,7 @@ class OscilationDataset:
 
     def calculate_angles_side(self, side='R'):
         df_angles = None
-        individuals = [f'w{side}{i}' for i in range(1, 5)]
+        individuals = filter(lambda x: x.startswith('wR'), self.individuals)
         whisker_pos = [bp for bp in self.bodyparts if bp.startswith('a')]
         nose = self.get_nose()
         for ind in individuals:
@@ -129,11 +129,10 @@ class OscilationDataset:
                 a = pd.DataFrame(angles)
                 a.index = a.n
                 a = a.drop(columns=['n'])
-                ranges = a['angles'].max() - a['angles'].min()
-                #     print(ranges)
-                asdf = (a['angles'] - a['angles'].min()).div(ranges)
-                #     print(asdf)
-                a['angles_' + ind + '_' + aa] = asdf
+                # normalization of the angles
+                range_min_max = max(1E-5, a['angles'].max() - a['angles'].min())
+                a_norm = (a['angles'] - a['angles'].min()).div(range_min_max)
+                a['angles_' + ind + '_' + aa] = a_norm
                 a = a.drop(columns=['angles'])
                 if df_angles is None:
                     df_angles = a
