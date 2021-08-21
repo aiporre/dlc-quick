@@ -210,10 +210,14 @@ class OscCorrections(BaseFrame):
         self.action_rdb.Bind(wx.EVT_RADIOBOX, self.onActionSelection)
         self.action_rdb.Enable(False)
 
-        # button to create dataset object in the trainer, also saves the training config with the given parameters.
+
         self.buttonPlay = wx.Button(self.panel, label="Play Section")
         self.buttonPlay.Bind(wx.EVT_BUTTON, self.onPlay)
         self.buttonPlay.Enable(False)
+
+        self.buttonFrameSlider = wx.Button(self.panel, label="Frame Slider")
+        self.buttonFrameSlider.Bind(wx.EVT_BUTTON, self.onFrameSlider)
+        self.buttonFrameSlider.Enable(False)
 
         # button to plot 16 images of the datatset, batchsize has no influence in that
         self.buttonSpec = wx.Button(self.panel, label="Show Spectrogram")
@@ -261,6 +265,7 @@ class OscCorrections(BaseFrame):
 
         # adding buttons
         buttonSizer.Add(self.buttonPlay, 0, wx.CENTER | wx.ALL, 15)
+        buttonSizer.Add(self.buttonFrameSlider, 0, wx.CENTER | wx.ALL, 15)
         buttonSizer.Add(self.buttonSpec, 0, wx.CENTER | wx.ALL, 15)
         buttonSizer.Add(self.buttonApplyActions, 0, wx.CENTER | wx.ALL, 15)
         buttonSizer.Add(self.buttonPrev, 0, wx.CENTER | wx.ALL, 15)
@@ -282,6 +287,7 @@ class OscCorrections(BaseFrame):
         self.samples = {}
         self.sampleSelected = None
         self.update_sample_list(None)
+        self.statusbar.SetStatusText()
 
     def find_iterations(self):
         '''find the iterations given a config file.'''
@@ -308,12 +314,30 @@ class OscCorrections(BaseFrame):
         if keycode == 314 or keycode == 316:
             event.Skip()
 
-    def onPlay(self, event):
+    def onFrameSlider(self, event):
         video_paths = self.samples[self.sampleSelected]['video_paths']
         metadata_path = os.path.splitext(video_paths[self.listSampleSections.GetSelection()])[0] + '.npy'
         print('metadata path: ', metadata_path)
         frame = VideoFrame(self.GetParent(), config=self.config, video_path=metadata_path)
         frame.Show()
+
+    def onPlay(self, event):
+        video_paths = self.samples[self.sampleSelected]['video_paths']
+        clip_path = os.path.splitext(video_paths[self.listSampleSections.GetSelection()])[0] + '.avi'
+        print('metadata path: ', clip_path)
+        cap = cv2.VideoCapture(clip_path)
+        while (cap.isOpened()):
+            ret, frame = cap.read()
+            if ret:
+                cv2.imshow("Image", frame)
+            else:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+            if cv2.waitKey(50) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv2.destroyAllWindows()
+
 
     def onShowSpec(self, event):
         print('show spec for sample: ', self.sampleSelected)
@@ -432,12 +456,14 @@ class OscCorrections(BaseFrame):
                 self.buttonPrev.Enable(True)
                 self.buttonNext.Enable(True)
                 self.buttonPlay.Enable(True)
+                self.buttonFrameSlider.Enable(True)
                 self.buttonApplyActions.Enable(True)
                 self.buttonSpec.Enable(True)
         else:
             self.buttonPrev.Enable(False)
             self.buttonNext.Enable(False)
             self.buttonPlay.Enable(False)
+            self.buttonFrameSlider.Enable(False)
             self.buttonApplyActions.Enable(False)
             self.buttonSpec.Enable(False)
             self.action_rdb.Enable(False)
@@ -451,6 +477,7 @@ class OscCorrections(BaseFrame):
     def apply_sample_selection(self, sample_selection_index):
         # gets the video name
         video_name = self.listSamples.GetItemText(sample_selection_index, col=1)
+        self.statusbar.SetStatusText('Current sample set selection: ' + video_name)
         print('video_name: ', video_name)
         self.sampleSelected = None
         # finds the sample hash name in the sample list/dict that has this video name
