@@ -1924,37 +1924,24 @@ class RefineTracklets(wx.Frame):
         destfolder = None if self.destfolder.GetPath() == '' else self.destfolder.GetPath()
         n_tracks = int(self.numberOfTracks.GetValue()) if self.enableNumberOfTracks.GetValue() else None
         import deeplabcut as d
+        videos_to_stitch = []
         if self.running_on_dir and self.makeTracksInAllVideos.GetValue():
             print('creating tracks from the video in sht epath:  ', self.video_path)
-            d.stitch_tracklets(self.config,
-                               videos=[self.video_path],
-                               shuffle=self.shuffle,
-                               trainingsetindex=self.trainIndex,
-                               videotype=self.videoType.GetValue(),
-                               n_tracks=n_tracks,
-                               track_method=self.track_method,
-                               destfolder=destfolder)
+            videos_to_stitch = self.videos
         elif self.makeTracksInAllVideos.GetValue():
             print('creating tracks for videos : ', self.videos)
-            d.stitch_tracklets(self.config,
-                               videos=self.videos,
-                               shuffle=self.shuffle,
-                               trainingsetindex=self.trainIndex,
-                               videotype=self.videoType.GetValue(),
-                               n_tracks=n_tracks,
-                               track_method=self.track_method,
-                               destfolder=destfolder)
+            videos_to_stitch = self.videos
         else:
-            video = [v for v in self.videos if self.videosChoice.GetStringSelection()[1:] in v]
-            print('creating tracks for video ', video )
-            d.stitch_tracklets(self.config,
-                               videos=video,
-                               shuffle=self.shuffle,
-                               trainingsetindex=self.trainIndex,
-                               videotype=self.videoType.GetValue(),
-                               n_tracks=n_tracks,
-                               track_method=self.track_method,
-                               destfolder=destfolder)
+            print('creating tracks for video ',  self.videosChoice.GetStringSelection())
+            videos_to_stitch = [v for v in self.videos if self.videosChoice.GetStringSelection()[1:] in v]
+        d.stitch_tracklets(self.config,
+                           videos=videos_to_stitch,
+                           shuffle=self.shuffle,
+                           trainingsetindex=self.trainIndex,
+                           videotype=self.videoType.GetValue(),
+                           n_tracks=n_tracks,
+                           track_method=self.track_method,
+                           destfolder=destfolder)
         self.update_status_videos_choice()
     def onChangeVideoType(self, event):
         import deeplabcut as d
