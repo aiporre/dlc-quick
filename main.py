@@ -1952,9 +1952,10 @@ class RefineTracklets(wx.Frame):
                                shuffle=self.shuffle,
                                trainingsetindex=self.trainIndex,
                                videotype=self.videoType.GetValue(),
-                               n_tracks=int(self.numberOfTracks.GetValue()),
+                               n_tracks=n_tracks,
                                track_method=self.track_method,
                                destfolder=destfolder)
+        self.update_status_videos_choice()
     def onChangeVideoType(self, event):
         import deeplabcut as d
         print('changes video type:')
