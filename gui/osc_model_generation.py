@@ -9,7 +9,7 @@ from deeplabcut.utils import auxiliaryfunctions
 
 from gui.contact_corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import OscilationDataset
-from gui.contact_model_training import WhiskerModelTraining
+from gui.osc_model_training import WhiskerModelTraining
 from gui.osc_corrections_toolbox import OscCorrections
 from gui.utils.parse_yaml import extractTrainingIndexShuffle, parse_yaml
 from gui.utils.snapshot_index import get_snapshot_index, get_snapshots
@@ -198,6 +198,7 @@ class OscModelGeneration(BaseFrame):
                  if not f.startswith('.') and
                  'contact-model' not in f and
                  'whisking-model' not in f and
+                 'osc-model' not in f and
                  'motion-model' not in f]
         print('files: ', files)
         return files

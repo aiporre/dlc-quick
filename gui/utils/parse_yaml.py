@@ -15,35 +15,63 @@ def parse_yaml(filepath, verbose=False):
             print(exc)
 
 
-def create_whisking_config_template():
-    yaml_str = """\
-    # Dataset parameters
-            datapath:
-            enable_eager:
-            image_dim_width:
-            image_dim_height:
-            \n
-    # Dataset optimization
-            cache:
-            shuffle_buffer:
-            split_rate:
-            \n
-    # Training parameters
-            learning_rate:
-            display_iter:
-            batch_size:
-            init_weights:
-            """
+def create_whisking_config_template(project_type):
+    if project_type == 'contact':
+        yaml_str = """\
+        # Dataset parameters
+                datapath:
+                enable_eager:
+                image_dim_width:
+                image_dim_height:
+                \n
+        # Dataset optimization
+                cache:
+                shuffle_buffer:
+                split_rate:
+                \n
+        # Training parameters
+                learning_rate:
+                display_iter:
+                batch_size:
+                init_weights:
+                """
+    else:
+        yaml_str = """\
+                # Dataset parameters
+                        datapath:
+                        num_frames:
+                        image_dim_width:
+                        image_dim_height:
+                        \n
+                # Dataset optimization
+                        cache:
+                        shuffle_buffer:
+                        split_ratio:
+                        random_crop:
+                        num_parallel_calls:
+                        \n
+                # Model parameters:
+                        fc_layers:
+                        lstm_units:
+                        base_net:
+                # Training parameters
+                        learning_rate:
+                        display_iter:
+                        batch_size:
+                        init_weights:
+                        epochs: 
+                        \n
+                        """
     ruamelFile = YAML()
     cfg_file = ruamelFile.load(yaml_str)
 
     return cfg_file, ruamelFile
 
 
-def write_whisking_config(configname, cfg):
+def write_whisking_config(configname, cfg, project_type='contact'):
 
     with open(configname, "w") as cf:
-        cfg_file, ruamelFile = create_whisking_config_template()
+        cfg_file, ruamelFile = create_whisking_config_template(project_type)
 
         for key in cfg.keys():
             cfg_file[key] = cfg[key]

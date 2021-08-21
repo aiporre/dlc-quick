@@ -1260,7 +1260,7 @@ class TrainNetwork(wx.Frame):
         config = parser_yaml(self.config)
         numbers = []
         iteration_selection = self.iteration.GetStringSelection()
-        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
+        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f and 'osc-model' not in f]
         return files
 
     def read_fields(self, parse=True):
@@ -1560,7 +1560,7 @@ class EvaluaterNetwork(wx.Frame):
     def find_shuffles(self):
         config = parse_yaml(self.config)
         iteration_selection = self.iteration.GetStringSelection()
-        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
+        files = [ f for f in os.listdir(os.path.join(config['project_path'], 'dlc-models', iteration_selection))if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f and 'osc-model' not in f]
         return files
 
     def find_snapshots(self):
@@ -2889,7 +2889,7 @@ class AnalyzeVideos(wx.Frame):
     def find_shuffles(self):
         cfg = parse_yaml(self.config)
         iteration = 'iteration-' + str(cfg['iteration'])
-        files = [f for f in os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f]
+        files = [f for f in os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration)) if not f.startswith('.') and 'contact-model' not in f and 'whisking-model' not in f and 'motion-model' not in f and 'osc-model' not in f]
         print('files: ', files)
         return files
 
