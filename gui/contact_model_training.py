@@ -207,7 +207,7 @@ class WhiskerModelTraining(BaseFrame):
 
     def onSaveConfig(self, event):
         print('saving config dataset: :) ')
-        tf.enable_eager_execution()
+        tf.compat.v1.enable_eager_execution()
         # the model_output_path is where the weights and logs are saved
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
         # applies configurations

@@ -132,9 +132,9 @@ class WhiskerModelTraining(BaseFrame):
         self.baseNet.SetSelection(0)
 
         # net_id associated with metastate that will load the best weights from there
-        netIdsLbl = wx.StaticText(self.panel, -1, "Initial weights:", size=wx.Size(int(0.3*self.gui_size[0]), 25))
+        netIdsLbl = wx.StaticText(self.panel, -1, "Net_id to load weights:", size=wx.Size(int(0.3*self.gui_size[0]), 25))
         self.net_ids = ['auto', 'custom'] # self.get_net_ids() + ['auto', 'custom']
-        self.initialWeigths = wx.Choice(self.panel, -1, choices = self.net_ids)
+        self.netIdsChoice = wx.Choice(self.panel, -1, choices = self.net_ids)
 
         customNetIdLbl = wx.StaticText(self.panel, -1 , "Define a new name for you model save weights")
         self.customNetId = wx.TextCtrl(self.panel, -1, "", size=wx.Size(int(0.3*self.gui_size[0]), 25))
@@ -158,9 +158,6 @@ class WhiskerModelTraining(BaseFrame):
         self.buttonSaveConfig = wx.Button(self.panel, label="Save Configuration")
         self.buttonSaveConfig.Bind(wx.EVT_BUTTON, self.onSaveConfig)
 
-        # button to plot 16 images of the datatset, batchsize has no influence in that
-        self.buttonShowBatch = wx.Button(self.panel, label="Show Batch")
-        self.buttonShowBatch.Bind(wx.EVT_BUTTON, self.onShowBatch)
 
         # button to train model
         self.buttonTrainModel = wx.Button(self.panel, label="Train Model")
@@ -234,14 +231,13 @@ class WhiskerModelTraining(BaseFrame):
         inputLeftSizer.Add(self.baseNet, 0, wx.LEFT, 2)
 
         inputLeftSizer.Add(netIdsLbl, 0, wx.LEFT, 2)
-        inputLeftSizer.Add(self.initialWeigths, 0, wx.LEFT, 2)
+        inputLeftSizer.Add(self.netIdsChoice, 0, wx.LEFT, 2)
 
         inputLeftSizer.Add(customNetIdLbl, 0, wx.LEFT, 2)
         inputLeftSizer.Add(self.customNetId, 0, wx.LEFT, 2)
         # adding buttons
 
         buttonSizer.Add(self.buttonSaveConfig, 0, wx.CENTER | wx.ALL, 15)
-        buttonSizer.Add(self.buttonShowBatch, 0, wx.CENTER | wx.ALL, 15)
         buttonSizer.Add(self.buttonTrainModel, 0, wx.CENTER | wx.ALL, 15)
 
         # at the end of the add to the stuff sizer
@@ -258,7 +254,6 @@ class WhiskerModelTraining(BaseFrame):
         mainSizer.Fit(self)
         mainSizer.SetSizeHints(self)
 
-        self.buttonShowBatch.Enable(False)
         self.buttonTrainModel.Enable(False)
 
     def find_iterations(self):
@@ -275,13 +270,13 @@ class WhiskerModelTraining(BaseFrame):
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
         # applies configurations
         self.training_cfg['datapath'] = self.datapath.GetPath()
-        self.training_cfg['num_frames'] = self.numFrames.GetValue()
+        self.training_cfg['num_frames'] = int(self.numFrames.GetValue())
         self.training_cfg['image_dim_height'] = int(self.imageDimHeight.GetValue())
         self.training_cfg['image_dim_width'] = int(self.imageDimWidth.GetValue())
         self.training_cfg['batch_size'] = int(self.batchSize.GetValue())
         self.training_cfg['learning_rate'] = float(self.learningRate.GetValue())
+        self.training_cfg['fc_layers'] = self.get_fc_layers()
         write_whisking_config(self.training_config_path, self.training_cfg, project_type='osc')
-
         self.model_trainer = Trainer(self.training_cfg['datapath'],
                                      output_path=model_output_path,
                                      num_frames=self.training_cfg['num_frames'],
@@ -298,7 +293,6 @@ class WhiskerModelTraining(BaseFrame):
                 cache=self.training_cfg['cache'],
                 shuffle_buffer_size=self.training_cfg['shuffle_buffer'])
         model_id = self.get_model_id() # gets model id from selection
-
         self.model_trainer.create_model(model_id=model_id, fc_layers=self.training_cfg['fc_layers'] + [2],
                                         lstm_units=self.training_cfg['lstm_units'], base_net=self.training_cfg['base_net'])
         # enabling buttons:
@@ -306,15 +300,27 @@ class WhiskerModelTraining(BaseFrame):
 
     def get_model_id(self):
         model_id = ''
-        if self.model_id.GetStringSelection == 'auto':
+        if self.netIdsChoice.GetStringSelection() == 'auto':
             model_id = ''
-        elif self.model_id.GetStringSelection == 'custom':
+        elif self.netIdsChoice.GetStringSelection() == 'custom':
             # custom enables a field to write what you want valid path stuff restritect
-            model_id = self.mode_id_custom.GetValue()
+            model_id = self.customNetId.GetValue()
         else:
-            model_id = self.model_id.GetStringSelection()
+            model_id = self.netIdsChoice.GetStringSelection()
         return model_id
 
+    def get_fc_layers(self):
+        fc_layers = []
+        for row in range(self.fcLayers.GetItemCount()):
+            try:
+                item = int(self.fcLayers.GetItemText(row,col=1))
+                fc_layers.append(item)
+            except ValueError as e:
+                print('Error parsing the fc layers: ', e)
+        if len(fc_layers) == 0:
+            raise Exception('fc layers failed to parse. Check the values, must be int')
+
+        return fc_layers
     def onShowBatch(self, event):
         print('Not implemented')
         # if not hasattr(self, 'model_trainer'):
@@ -337,8 +343,8 @@ class WhiskerModelTraining(BaseFrame):
             config = {}
             config['datapath'] = ''
             config['num_frames'] = 60
-            config['image_dim_width'] = 100
-            config['image_dim_height'] = 100
+            config['image_dim_width'] = 224
+            config['image_dim_height'] = 224
             config['batch_size'] = 32
             config['learning_rate'] = 0.01
             config['display_iter'] = 5
