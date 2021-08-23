@@ -342,7 +342,10 @@ class WhiskerModelTraining(BaseFrame):
 
     def get_model_ids(self):
         model_saved_path = Path(self.training_config_path).parent.joinpath('models').resolve().absolute()
-        model_ids_available = [ os.path.splitext(f)[0][len('model_'):] for f in os.listdir(model_saved_path) if f.startswith('model_')]
+        if os.path.exists(model_saved_path):
+            model_ids_available = [ os.path.splitext(f)[0][len('model_'):] for f in os.listdir(model_saved_path) if f.startswith('model_')]
+        else:
+            return []
         # def get_date_from_model_id(model_id):
         #     return  '-'.join(model_id.split('-')[-6:])
         # def get_net_id(model_id, date):
