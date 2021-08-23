@@ -241,11 +241,9 @@ class ContactModelGeneration(BaseFrame):
                     break
             # labels_path coulnd be found then stop generation.
             if labels_path is None:
-                msg = f'Analysis for video: {video_path} is missing. Please run Analyze Video first.'
-                dialog = wx.MessageDialog(self, msg, "Error", wx.OK | wx.STAY_ON_TOP | wx.CENTRE)
-                dialog.ShowModal()
-                return
-            pairs.append((video_path, labels_path))
+                print(f'Analysis for video: {video_path} is missing. Please run Analyze Video first.')
+            else:
+                pairs.append((video_path, labels_path))
         print('PAIRS: ', pairs)
         # if pairs generated then run generation fo files for each pair
         for v_path, l_path in pairs:
