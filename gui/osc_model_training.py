@@ -133,7 +133,7 @@ class WhiskerModelTraining(BaseFrame):
 
         # net_id associated with metastate that will load the best weights from there
         netIdsLbl = wx.StaticText(self.panel, -1, "Net_id to load weights:", size=wx.Size(int(0.3*self.gui_size[0]), 25))
-        self.net_ids = ['auto', 'custom'] # self.get_net_ids() + ['auto', 'custom']
+        self.net_ids = self.get_model_ids() + ['auto', 'custom']
         self.netIdsChoice = wx.Choice(self.panel, -1, choices = self.net_ids)
         self.netIdsChoice.SetSelection(0)
 
@@ -301,22 +301,31 @@ class WhiskerModelTraining(BaseFrame):
         self.model_trainer.prepare_for_training(
                 cache=self.training_cfg['cache'],
                 shuffle_buffer_size=self.training_cfg['shuffle_buffer'])
-        model_id = self.get_model_id() # gets model id from selection
-        self.model_trainer.create_model(model_id=model_id, fc_layers=self.training_cfg['fc_layers'] + [2],
+        model_id, date = self.get_model_id() # gets model id from selection
+        self.model_trainer.create_model(model_id=model_id, date= date, fc_layers=self.training_cfg['fc_layers'] + [2],
                                         lstm_units=self.training_cfg['lstm_units'], base_net=self.training_cfg['base_net'])
         # enabling buttons:
         self.buttonTrainModel.Enable(True)
 
     def get_model_id(self):
-        model_id = ''
+        def get_date_from_model_id(model_id):
+            return '-'.join(model_id.split('-')[-6:])
+
+        def get_net_id(model_id, date):
+            return model_id[:model_id.index(date) - 1]
+
         if self.netIdsChoice.GetStringSelection() == 'auto':
-            model_id = ''
+            net_id = ''
+            date = None
         elif self.netIdsChoice.GetStringSelection() == 'custom':
             # custom enables a field to write what you want valid path stuff restritect
-            model_id = self.customNetId.GetValue()
+            net_id = self.customNetId.GetValue()
+            date = None
         else:
             model_id = self.netIdsChoice.GetStringSelection()
-        return model_id
+            date = get_date_from_model_id(model_id)
+            net_id = get_net_id(model_id, date)
+        return net_id, date
 
     def get_fc_layers(self):
         fc_layers = []
@@ -330,6 +339,17 @@ class WhiskerModelTraining(BaseFrame):
             raise Exception('fc layers failed to parse. Check the values, must be int')
 
         return fc_layers
+
+    def get_model_ids(self):
+        model_saved_path = Path(self.training_config_path).parent.joinpath('models').resolve().absolute()
+        model_ids_available = [ os.path.splitext(f)[0][len('model_'):] for f in os.listdir(model_saved_path) if f.startswith('model_')]
+        # def get_date_from_model_id(model_id):
+        #     return  '-'.join(model_id.split('-')[-6:])
+        # def get_net_id(model_id, date):
+        #     return model_id[:model_id.index(date)-1]
+        # dates = [ get_date_from_model_id(model_id) for model_id in model_ids_available]
+        # net_ids = [get_net_id(model_id, date) for model_id, date in zip(model_ids_available, dates)]
+        return model_ids_available
 
     def onShowBatch(self, event):
         print('Not implemented')
