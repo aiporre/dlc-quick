@@ -135,6 +135,7 @@ class WhiskerModelTraining(BaseFrame):
         netIdsLbl = wx.StaticText(self.panel, -1, "Net_id to load weights:", size=wx.Size(int(0.3*self.gui_size[0]), 25))
         self.net_ids = ['auto', 'custom'] # self.get_net_ids() + ['auto', 'custom']
         self.netIdsChoice = wx.Choice(self.panel, -1, choices = self.net_ids)
+        self.netIdsChoice.SetSelection(0)
 
         customNetIdLbl = wx.StaticText(self.panel, -1 , "Define a new name for you model save weights")
         self.customNetId = wx.TextCtrl(self.panel, -1, "", size=wx.Size(int(0.3*self.gui_size[0]), 25))
@@ -276,6 +277,14 @@ class WhiskerModelTraining(BaseFrame):
         self.training_cfg['batch_size'] = int(self.batchSize.GetValue())
         self.training_cfg['learning_rate'] = float(self.learningRate.GetValue())
         self.training_cfg['fc_layers'] = self.get_fc_layers()
+        self.training_cfg['base_net'] = self.baseNet.GetStringSelection()
+        self.training_cfg['lstm_units'] = int(self.lstmUnits.GetValue())
+        self.training_cfg['epochs'] = int(self.epochNumber.GetValue())
+        self.training_cfg['split_ratio'] = self.splitRate.GetValue()
+        self.training_cfg['random_crop'] = self.randomCrop.GetValue()
+        self.training_cfg['num_parallel_calls' ] = self.numParallelCalls.GetValue()
+        self.training_cfg['cache'] = self.cache.GetValue()
+        self.training_cfg['shuffle_buffer'] = int(self.shuffleBuffer.GetValue())
         write_whisking_config(self.training_config_path, self.training_cfg, project_type='osc')
         self.model_trainer = Trainer(self.training_cfg['datapath'],
                                      output_path=model_output_path,
@@ -321,6 +330,7 @@ class WhiskerModelTraining(BaseFrame):
             raise Exception('fc layers failed to parse. Check the values, must be int')
 
         return fc_layers
+
     def onShowBatch(self, event):
         print('Not implemented')
         # if not hasattr(self, 'model_trainer'):
