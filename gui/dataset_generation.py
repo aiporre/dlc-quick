@@ -394,31 +394,31 @@ class ContactDataset:
 
     def generate_dataset(self):
         prefix = os.path.splitext(os.path.basename(self.video_path))[0]
+        if not os.path.exists(os.path.join(self.dest_path, 'positive_frames')):
+            os.mkdir(os.path.join(self.dest_path, 'positive_frames'))
 
+        if not os.path.exists(os.path.join(self.dest_path, 'negative_frames')):
+            os.mkdir(os.path.join(self.dest_path, 'negative_frames'))
+        positive_frames = []
+        negative_frames = []
         for whisker_label  in self.whisker_labels:
             # extracting positive frames
-            positive_frames = self.capture_positive_frames(whisker_label=whisker_label)
-            p_frames = [self.video_frames[i] for i in positive_frames]
-
-            if not os.path.exists(os.path.join(self.dest_path,'positive_frames')):
-                os.mkdir(os.path.join(self.dest_path,'positive_frames'))
-
-            if not os.path.exists(os.path.join(self.dest_path, 'negative_frames')):
-                os.mkdir(os.path.join(self.dest_path, 'negative_frames'))
-
-
-            for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({whisker_label}): ', total=len(p_frames)):
-                # TODO: image file type is Harcoded!
-                imsave(os.path.join(self.dest_path,'positive_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+            positive_frames.extend(self.capture_positive_frames(whisker_label=whisker_label))
             # extranting negative frames
-            negative_frames = self.capture_negative_frames(whisker_label=whisker_label)
+            negative_frames.extend(self.capture_negative_frames(whisker_label=whisker_label))
             if len(negative_frames) > len(positive_frames):
                 negative_frames = sample(negative_frames, len(positive_frames))
 
-            n_frames = [self.video_frames[i] for i in negative_frames]
-            for i, p in tqdm(zip(negative_frames, n_frames), desc=f'Saving Negative frames ({whisker_label}): ', total=len(n_frames)):
-                # TODO: image file type is Harcoded!
-                imsave(os.path.join(self.dest_path,'negative_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+        p_frames = [self.video_frames[i] for i in positive_frames]
+        for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({whisker_label}): ', total=len(p_frames)):
+            # TODO: image file type is Harcoded!
+            imsave(os.path.join(self.dest_path, 'positive_frames',
+                                prefix + '-w-' + whisker_label + '-f-' + str(i) + '.png'), p)
+        n_frames = [self.video_frames[i] for i in negative_frames]
+        for i, p in tqdm(zip(negative_frames, n_frames), desc=f'Saving Negative frames ({whisker_label}): ', total=len(n_frames)):
+            # TODO: image file type is Harcoded!
+            imsave(os.path.join(self.dest_path,'negative_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+
         print('done')
 
 if __name__ == '__main__':
