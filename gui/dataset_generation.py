@@ -306,7 +306,7 @@ class OscilationDataset:
 
 
 class ContactDataset:
-    def __init__(self, labels_path, video_path, dest_path):
+    def __init__(self, labels_path, video_path, dest_path, probability='0.6'):
         self.labels_path = labels_path
         self.video_path = video_path
         self.dest_path = dest_path
@@ -334,6 +334,7 @@ class ContactDataset:
         except MemoryError as e:
             print('ERROR: ' + str(e))
             self.video_frames = VideoReaderArray(video_path)
+        self.probability = probability
 
 
         # get whisker labels
@@ -359,7 +360,7 @@ class ContactDataset:
         for i in range(0, self.whisker_num_items[whisker]):
             wlabel = whisker + str(i)
             df = self.extract_body_coords( wlabel)[["x", "y", "likelihood"]].apply(pd.to_numeric)
-            df = df.query('likelihood>0.1')
+            df = df.query('likelihood>%f' % self.probability)
             df['index'] = df.index.astype(int)
             if df_w is not None:
                 df_w = pd.concat([df_w, df], axis=0)
@@ -411,14 +412,14 @@ class ContactDataset:
         positive_frames = list(set(positive_frames))
         negative_frames = list(set(negative_frames))
         p_frames = [self.video_frames[i] for i in positive_frames]
-        for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({whisker_label}): ', total=len(p_frames)):
+        for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({prefix}): ', total=len(p_frames)):
             # TODO: image file type is Harcoded!
             imsave(os.path.join(self.dest_path, 'positive_frames',
-                                prefix + '-w-' + whisker_label + '-f-' + str(i) + '.png'), p)
+                                prefix + '-f-' + str(i) + '.png'), p)
         n_frames = [self.video_frames[i] for i in negative_frames]
-        for i, p in tqdm(zip(negative_frames, n_frames), desc=f'Saving Negative frames ({whisker_label}): ', total=len(n_frames)):
+        for i, p in tqdm(zip(negative_frames, n_frames), desc=f'Saving Negative frames ({prefix}): ', total=len(n_frames)):
             # TODO: image file type is Harcoded!
-            imsave(os.path.join(self.dest_path,'negative_frames', prefix + '-w-' + whisker_label +'-f-' + str(i) + '.png'), p)
+            imsave(os.path.join(self.dest_path,'negative_frames', prefix +'-f-' + str(i) + '.png'), p)
 
         print('done')
 

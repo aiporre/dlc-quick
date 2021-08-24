@@ -66,6 +66,11 @@ class ContactModelGeneration(BaseFrame):
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'])  # +get_available_gpus()
 
+        probThresholdLbl = wx.StaticText(self.panel, -1, "Prob threshold" )
+        self.probThreshold = wx.TextCtrl(self.panel, -1 , "0.9" )
+        probThreshold = self.probThreshold.GetSelection()
+        self.probThreshold.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, probThreshold))
+
         # 6. list of videos to be processed.
         self.listIndex = 0
         videosListLbl = wx.StaticText(self.panel, -1, "Target videos list:")
@@ -134,7 +139,12 @@ class ContactModelGeneration(BaseFrame):
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
 
+        line2  = wx.BoxSizer(wx.HORIZONTAL)
+        line2.Add(probThresholdLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.probThreshold, 0, wx.EXPAND | wx.ALL, 2)
+
         inputSizer.Add(line1, 0, wx.EXPAND, 2)
+        inputSizer.Add(line2, 0, wx.EXPAND, 2)
         inputSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
         inputSizer.Add(listOrPathLbl, 0, wx.EXPAND, 2)
@@ -249,7 +259,7 @@ class ContactModelGeneration(BaseFrame):
         for v_path, l_path in pairs:
             print(f'video path = {v_path} label path =  {l_path}')
             ContactDataset(labels_path=l_path, video_path=v_path,
-                           dest_path=self.destfolder.GetPath()).generate_dataset()
+                           dest_path=self.destfolder.GetPath(), probability=self.probThreshold.GetValue()).generate_dataset()
 
     def on_new_frame(self, event, frame_type):
         print('open new window: ', frame_type)
@@ -273,7 +283,7 @@ def show(config, startpath='.'):
 
 
 if __name__ == '__main__':
-    config = '/Users/ariel/funana/quick-dlc/test-kunerAG-2021-05-11/config.yaml'
+    config = r'Z:\Ariel\models\dlc\wcontact4-agkuner-2020-12-03\config.yaml'
     startpath = os.getcwd()
     wd = Path(config).resolve().parents[0]
     os.chdir(str(wd))
