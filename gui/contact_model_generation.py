@@ -9,7 +9,8 @@ from deeplabcut.utils import auxiliaryfunctions
 from gui.contact_corrections_toolbox import CorrectionsFrame
 from gui.dataset_generation import ContactDataset
 from gui.contact_model_training import WhiskerModelTraining
-from gui.utils.snapshot_index import get_snapshot_index
+from gui.utils.parse_yaml import extractTrainingIndexShuffle, parse_yaml
+from gui.utils.snapshot_index import get_snapshot_index, get_snapshots
 
 
 def get_videos(videosList):
@@ -48,15 +49,17 @@ class ContactModelGeneration(BaseFrame):
         self.listOrPath = wx.Choice(self.panel, id=-1, choices=['target videos path', 'target videos list'])
 
         # 3. inputs to select model
-        snapshotIndexLbl = wx.StaticText(self.panel, -1, "snapshot index:")
-        self.snapshotIndex = wx.TextCtrl(self.panel, -1, "-1")
-        snapshotIndex = self.snapshotIndex.GetSelection()
-        self.snapshotIndex.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, snapshotIndex))
-
+        # 3-b for the shuffle stuff
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
-        self.shuffle = wx.TextCtrl(self.panel, -1, "1")
-        shuffle = self.shuffle.GetSelection()
-        self.shuffle.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_int(event, shuffle))
+        self.shuffle = wx.Choice(self.panel, -1, choices=self.find_shuffles())
+        self.shuffle.SetSelection(0)
+        self.shuffle.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
+
+        # 3-a shapshots list
+        snapshotLbl = wx.StaticText(self.panel, -1, "Snapshot:")
+        self.snapshots = self.find_snapshots()
+        self.snapshot = wx.Choice(self.panel, -1, choices=self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots) - 1)
 
         # 4. format of video in path
         videoTypeLbl = wx.StaticText(self.panel, -1, "Video type to search in videos path:")
@@ -133,8 +136,8 @@ class ContactModelGeneration(BaseFrame):
         line1 = wx.BoxSizer(wx.HORIZONTAL)
         line1.Add(shuffleLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.shuffle, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(snapshotIndexLbl, 0, wx.EXPAND | wx.ALL, 2)
-        line1.Add(self.snapshotIndex, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(snapshotLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line1.Add(self.snapshot, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(videoTypeLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.videoType, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
@@ -221,6 +224,7 @@ class ContactModelGeneration(BaseFrame):
         self.listIndex = self.listIndex - 1
 
     def on_generate_dataset(self, event):
+        import deeplabcut as d
         print('Generate dataset....')
         if self.listOrPath.GetString(self.listOrPath.GetCurrentSelection()) == 'target videos path':
             targetVideosPath = self.targetVideos.GetPath()
@@ -230,8 +234,27 @@ class ContactModelGeneration(BaseFrame):
             videos = get_videos(self.videosList)
         print('Videos: ', videos)
         # generate pairs (video_path, labels_path)
-        # if labels_path doesn't exists for video it will stop and ask you to analyze videos first
         pairs = []
+        # analyze files in video dir path looking for the labels_path pair.
+        # first computes the suffix/ending
+        cfg = parse_yaml(self.config)
+        shuffle_string = self.shuffle.GetStringSelection()
+        training_index, shuffle_number = extractTrainingIndexShuffle(
+            self.config,
+            self.shuffle.GetStringSelection())
+        training_fraction = cfg["TrainingFraction"][training_index]
+        scorer, _ = d.utils.GetScorerName(cfg, shuffle_number, training_fraction)
+        _projsuffix = shuffle_string.split('-')[0]  # project name and date
+        scorer = scorer[:scorer.index(_projsuffix)]
+        # get the snapshot number at the end of the string
+        snapshot_string = self.snapshot.GetStringSelection()
+        if snapshot_string == 'config.yaml':
+            snapshot_string = get_snapshot_index(self.config, shuffle=shuffle_number, trainingsetindex=training_index)
+        elif snapshot_string == 'latest':
+            snapshot_string = self.snapshots[-3]
+        snapshot_number = snapshot_string.split('-')[-1]
+        label_ending = f'{scorer}{_projsuffix}shuffle{shuffle_number}_{snapshot_number}'
+
         for video_path in videos:
             if not video_path.endswith(self.videoType.GetValue()):
                 print('Doesn\'t end in ', self.videoType.GetValue(), 'skipping video_path: ', video_path)
@@ -244,10 +267,7 @@ class ContactModelGeneration(BaseFrame):
             for f in files:
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
-                snapshot_index = get_snapshot_index(self.config, self.shuffle.GetValue()).split("-")[1]
-                shuffle_shapshot_index = 'shuffle' + str(self.shuffle.GetValue()) + '_' + str(snapshot_index)
-
-                if f_name.startswith(v_name) and f_name.endswith(shuffle_shapshot_index + ".csv") or f_name.endswith(shuffle_shapshot_index + ".h5"):
+                if f_name.startswith(v_name) and f_name.endswith(label_ending + ".csv") or f_name.endswith(label_ending + ".h5"):
                     labels_path = os.path.join(video_dir_path, f)
                     break
             # labels_path coulnd be found then stop generation.
@@ -276,6 +296,26 @@ class ContactModelGeneration(BaseFrame):
             return
         frame.Show()
 
+    def find_snapshots(self):
+        training_index, shuffle_number = extractTrainingIndexShuffle(self.config, self.shuffle.GetStringSelection())
+        return get_snapshots(self.config, shuffle_number, training_index).tolist() + ['latest', 'config.yaml']
+
+    def find_shuffles(self):
+        cfg = parse_yaml(self.config)
+        iteration = 'iteration-' + str(cfg['iteration'])
+        files = [f for f in os.listdir(os.path.join(cfg['project_path'], 'dlc-models', iteration))
+                 if not f.startswith('.') and
+                 'contact-model' not in f and
+                 'whisking-model' not in f and
+                 'osc-model' not in f and
+                 'motion-model' not in f]
+        print('files: ', files)
+        return files
+
+    def onSelectShuffleNumber(self, event):
+        self.snapshots = self.find_snapshots()
+        self.snapshot.SetItems(self.snapshots)
+        self.snapshot.SetSelection(len(self.snapshots)-1)
 
 def show(config, startpath='.'):
     app = wx.App()

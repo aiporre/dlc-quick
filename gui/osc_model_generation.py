@@ -52,6 +52,7 @@ class OscModelGeneration(BaseFrame):
         self.listOrPath.SetSelection(1)
 
         # 3. inputs to select model
+        # 3-b for the shuffle stuff
         shuffleLbl = wx.StaticText(self.panel, -1, "Shuffle:")
         self.shuffle = wx.Choice(self.panel, -1, choices=self.find_shuffles())
         self.shuffle.SetSelection(0)
