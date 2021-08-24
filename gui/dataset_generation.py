@@ -50,7 +50,7 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     return y
 
 class OscilationDataset:
-    def __init__(self, labels_path, video_path, dest_path):
+    def __init__(self, labels_path, video_path, dest_path, probability='0.9'):
         self.labels_path = labels_path
         self.video_path = video_path
         self.dest_path = dest_path
@@ -67,6 +67,7 @@ class OscilationDataset:
         self.bodyparts = self.data.columns.get_level_values(2).unique().values
         self.scorer = self.data.columns.get_level_values(0).unique().values[0]
         self.individuals = self.data.columns.get_level_values(1).unique().values
+        self.probability = probability
 
     def extract_body_coords(self, individual, bodypart):
         scorer = self.data.columns.get_level_values(0).unique().values[0]
@@ -86,7 +87,7 @@ class OscilationDataset:
     def get_nose(self):
         label = 'nose'
         df_nose = self.extract_body_coords('single', label)[["x", "y", "likelihood"]].apply(pd.to_numeric)
-        df_nose = df_nose.query('likelihood>0.9')
+        df_nose = df_nose.query('likelihood>%f' % self.probability)
         df_nose['index'] = df_nose.index.astype(int)
         return df_nose
 

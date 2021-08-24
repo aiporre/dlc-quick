@@ -57,6 +57,7 @@ class OscModelGeneration(BaseFrame):
         self.shuffle.SetSelection(0)
         self.shuffle.Bind(wx.EVT_CHOICE, self.onSelectShuffleNumber)
 
+        # 3-a shapshots list
         snapshotLbl = wx.StaticText(self.panel, -1, "Snapshot:")
         self.snapshots = self.find_snapshots()
         self.snapshot = wx.Choice(self.panel, -1, choices=self.snapshots)
@@ -70,6 +71,12 @@ class OscModelGeneration(BaseFrame):
         # 5. GPU configurations
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'])  # +get_available_gpus()
+
+        # 5-a setting the probability threshold for selection the valid predictions
+        probThresholdLbl = wx.StaticText(self.panel, -1, "Prob threshold")
+        self.probThreshold = wx.TextCtrl(self.panel, -1, "0.9")
+        probThreshold = self.probThreshold.GetSelection()
+        self.probThreshold.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, probThreshold))
 
         # 6. list of videos to be processed.
         self.listIndex = 0
@@ -140,7 +147,12 @@ class OscModelGeneration(BaseFrame):
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
 
+        line2 = wx.BoxSizer(wx.HORIZONTAL)
+        line2.Add(probThresholdLbl, 0, wx.EXPAND | wx.ALL, 2)
+        line2.Add(self.probThreshold, 0, wx.EXPAND | wx.ALL, 2)
+
         inputSizer.Add(line1, 0, wx.EXPAND, 2)
+        inputSizer.Add(line2, 0, wx.EXPAND, 2)
         inputSizer.Add(destfolderLbl, 0, wx.EXPAND, 2)
         inputSizer.Add(self.destfolder, 0, wx.EXPAND, 2)
         inputSizer.Add(listOrPathLbl, 0, wx.EXPAND, 2)
@@ -290,7 +302,7 @@ class OscModelGeneration(BaseFrame):
         for v_path, l_path in pairs:
             print(f'video path = {v_path} label path =  {l_path}')
             OscilationDataset(labels_path=l_path, video_path=v_path,
-                              dest_path=self.destfolder.GetPath()).generate_dataset()
+                              dest_path=self.destfolder.GetPath(), probability=self.probThreshold.GetValue()).generate_dataset()
 
     def on_new_frame(self, event, frame_type):
         print('open new window: ', frame_type)

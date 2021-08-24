@@ -66,6 +66,7 @@ class ContactModelGeneration(BaseFrame):
         gpusAvailableLbl = wx.StaticText(self.panel, -1, "GPU available")
         self.gpusAvailable = wx.Choice(self.panel, id=-1, choices=['None'])  # +get_available_gpus()
 
+        # 5-a setting the probability threshold for selection the valid predictions
         probThresholdLbl = wx.StaticText(self.panel, -1, "Prob threshold" )
         self.probThreshold = wx.TextCtrl(self.panel, -1 , "0.9" )
         probThreshold = self.probThreshold.GetSelection()
@@ -139,7 +140,7 @@ class ContactModelGeneration(BaseFrame):
         line1.Add(gpusAvailableLbl, 0, wx.EXPAND | wx.ALL, 2)
         line1.Add(self.gpusAvailable, 0, wx.EXPAND | wx.ALL, 2)
 
-        line2  = wx.BoxSizer(wx.HORIZONTAL)
+        line2 = wx.BoxSizer(wx.HORIZONTAL)
         line2.Add(probThresholdLbl, 0, wx.EXPAND | wx.ALL, 2)
         line2.Add(self.probThreshold, 0, wx.EXPAND | wx.ALL, 2)
 
