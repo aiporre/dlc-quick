@@ -9,7 +9,6 @@ from deeplabcut.utils import auxiliaryfunctions
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import write_whisking_config
 
-from whisker_osc_pred.osc.oscillation import Trainer
 import tensorflow as tf
 
 
@@ -256,6 +255,13 @@ class WhiskerModelTraining(BaseFrame):
         mainSizer.SetSizeHints(self)
 
         self.buttonTrainModel.Enable(False)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+    def OnClose(self, event):
+        if tf.executing_eagerly():
+            tf.compat.v1.disable_eager_execution()
+            print('Warning: closing osc whisking model training. disabling also eager execution.' )
+        event.Skip()
 
     def find_iterations(self):
         '''find the iterations given a config file.'''
@@ -266,6 +272,7 @@ class WhiskerModelTraining(BaseFrame):
         return iterations
 
     def onSaveConfig(self, event):
+        from whisker_osc_pred.osc.oscillation import Trainer
         print('saving config dataset: :) ')
         # the model_output_path is where the weights and logs are saved
         model_output_path = Path(self.training_config_path).parent.resolve().absolute()
