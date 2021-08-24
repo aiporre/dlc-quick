@@ -87,8 +87,9 @@ class OscilationDataset:
     def get_nose(self):
         label = 'nose'
         df_nose = self.extract_body_coords('single', label)[["x", "y", "likelihood"]].apply(pd.to_numeric)
-        df_nose = df_nose.query('likelihood>%f' % self.probability)
+        df_nose = df_nose.query('likelihood>' + str(self.probability))
         df_nose['index'] = df_nose.index.astype(int)
+        assert len(df_nose) >  0, 'No frames with nose detected for this video with likelihood>' + str(self.probability)
         return df_nose
 
     # calculate angles:
@@ -361,7 +362,7 @@ class ContactDataset:
         for i in range(0, self.whisker_num_items[whisker]):
             wlabel = whisker + str(i)
             df = self.extract_body_coords( wlabel)[["x", "y", "likelihood"]].apply(pd.to_numeric)
-            df = df.query('likelihood>%f' % self.probability)
+            df = df.query('likelihood>' + str(self.probability))
             df['index'] = df.index.astype(int)
             if df_w is not None:
                 df_w = pd.concat([df_w, df], axis=0)
@@ -377,6 +378,9 @@ class ContactDataset:
     def capture_positive_frames(self, whisker_label='a'):
         interesting_frames = []
         whisker = self.get_whisker(whisker=whisker_label)
+        if len(whisker) == 0:
+            print(f'Positive: No whisker detectec for whisker label {whisker_label} in video {os.path.basename(self.video_path)}')
+            return []
         for i in range(whisker.index.values.max()):
             whisker_at_n = self.get_whisker_at(whisker, i)
             if len(whisker_at_n) >= 5:
@@ -387,6 +391,9 @@ class ContactDataset:
         video_length = len(self.video_frames)
         interesting_frames = []
         whisker = self.get_whisker(whisker=whisker_label)
+        if len(whisker) == 0:
+            print(f'Negative: No whisker detectec for whisker label {whisker_label} in video {os.path.basename(self.video_path)}')
+            return []
         for i in range(whisker.index.values.max()):
             whisker_at_n = self.get_whisker_at(whisker, i)
             if len(whisker_at_n) >= 5:

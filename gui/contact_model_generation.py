@@ -72,7 +72,7 @@ class ContactModelGeneration(BaseFrame):
         # 5-a setting the probability threshold for selection the valid predictions
         probThresholdLbl = wx.StaticText(self.panel, -1, "Prob threshold" )
         self.probThreshold = wx.TextCtrl(self.panel, -1 , "0.9" )
-        probThreshold = self.probThreshold.GetSelection()
+        probThreshold = self.probThreshold
         self.probThreshold.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, probThreshold))
 
         # 6. list of videos to be processed.
@@ -267,7 +267,7 @@ class ContactModelGeneration(BaseFrame):
             for f in files:
                 v_name = os.path.splitext(os.path.basename(f))[0]
                 f_name = os.path.basename(f)
-                if f_name.startswith(v_name) and f_name.endswith(label_ending + ".csv") or f_name.endswith(label_ending + ".h5"):
+                if f_name.startswith(v_name) and (f_name.endswith(label_ending + ".csv") or f_name.endswith(label_ending + ".h5")):
                     labels_path = os.path.join(video_dir_path, f)
                     break
             # labels_path coulnd be found then stop generation.

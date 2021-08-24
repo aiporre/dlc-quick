@@ -76,7 +76,7 @@ class OscModelGeneration(BaseFrame):
         # 5-a setting the probability threshold for selection the valid predictions
         probThresholdLbl = wx.StaticText(self.panel, -1, "Prob threshold")
         self.probThreshold = wx.TextCtrl(self.panel, -1, "0.9")
-        probThreshold = self.probThreshold.GetSelection()
+        probThreshold = self.probThreshold
         self.probThreshold.Bind(wx.EVT_CHAR, lambda event: self.force_numeric_float(event, probThreshold))
 
         # 6. list of videos to be processed.
