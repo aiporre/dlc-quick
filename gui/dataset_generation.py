@@ -408,7 +408,8 @@ class ContactDataset:
             negative_frames.extend(self.capture_negative_frames(whisker_label=whisker_label))
             if len(negative_frames) > len(positive_frames):
                 negative_frames = sample(negative_frames, len(positive_frames))
-
+        positive_frames = list(set(positive_frames))
+        negative_frames = list(set(negative_frames))
         p_frames = [self.video_frames[i] for i in positive_frames]
         for i, p in tqdm(zip(positive_frames, p_frames), desc=f'Saving Positive frames ({whisker_label}): ', total=len(p_frames)):
             # TODO: image file type is Harcoded!
