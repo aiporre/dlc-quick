@@ -220,7 +220,6 @@ class WhiskerModelTraining(BaseFrame):
         write_whisking_config(self.training_config_path, self.training_cfg)
 
         self.model_trainer = Trainer(self.training_cfg['datapath'],
-                enable_eager=self.training_cfg['enable_eager'],
                 img_height=self.training_cfg['image_dim_height'],
                 img_width=self.training_cfg['image_dim_width'],
                 batch_size=self.training_cfg['batch_size'],
@@ -233,7 +232,9 @@ class WhiskerModelTraining(BaseFrame):
             split_training(
                 rate=self.training_cfg['split_rate']).\
             create_model(init_weights=
-                self.initialWeigths.GetPath())
+                self.initialWeigths.GetPath(),
+                         img_height=self.training_cfg['image_dim_height'],
+                         img_width=self.training_cfg['image_dim_width'])
         # enabling buttons:
         self.buttonShowBatch.Enable(True)
         self.buttonTrainModel.Enable(True)
