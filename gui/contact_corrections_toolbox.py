@@ -22,7 +22,7 @@ from deeplabcut.utils import auxiliaryfunctions, auxiliaryfunctions_3d
 
 to_action = {'positive_frames': 0, 'negative_frames': 1, 'delete': 2}
 from_action = {0: 'positive_frames', 1: 'negative_frames', 2: 'delete'}
-
+action_to_color = {'positive_frames': (0, 255, 0), 'negative_frames': (255, 0, 0), 'delete': (0, 0, 255)}
 
 
 
@@ -32,12 +32,18 @@ class ImagePanel(BasePanel):
         self.config = config
         self.toolbar = None
 
-    def drawplot(self, img, img_name, itr, images_number, keep_view=False):
+    def drawplot(self, img, img_name, itr, images_number, keep_view=False, label='positive_frames'):
         xlim = self.axes.get_xlim()
         ylim = self.axes.get_ylim()
         self.axes.clear()
 
         im = cv2.imread(img)[..., ::-1]
+        print(im.shape)
+        im = np.array(im)
+        if isinstance(label,int):
+            label = from_action[label]
+        color = action_to_color[label]
+        im = cv2.rectangle(im, (2, 2), (im.shape[1]-2, im.shape[0]-2), color, 3)
 
         ax = self.axes.imshow(im)
         self.orig_xlim = self.axes.get_xlim()
@@ -314,6 +320,7 @@ class CorrectionsFrame(BaseFrame):
         # ploting images:
         self.iter = 0
         self.img = str(self.images[self.iter])
+        action = self.current_actions[self.iter] if self.perform_actions[self.iter] is None else self.perform_actions[self.iter]
         img_name =  Path(self.img).name
         (
             self.figure,
@@ -321,7 +328,7 @@ class CorrectionsFrame(BaseFrame):
             self.canvas,
             self.toolbar,
         ) = self.image_panel.drawplot(
-            self.img, img_name, self.iter, len(self.images))
+            self.img, img_name, self.iter, len(self.images), label=action)
         self.figure.canvas.draw()
 
         self.action_rdb.Enable(True)
@@ -351,7 +358,7 @@ class CorrectionsFrame(BaseFrame):
             self.action_rdb.SetSelection(selected_action)
             self.img = str(self.images[self.iter])
             img_name = Path(self.img).name
-            self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.img, img_name, self.iter, len(self.images), keep_view=self.view_locked)
+            self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.img, img_name, self.iter, len(self.images), keep_view=self.view_locked, label=selected_action)
             self.figure.canvas.draw()
 
     def nextImage(self, event):
@@ -373,7 +380,7 @@ class CorrectionsFrame(BaseFrame):
             self.action_rdb.SetSelection(selected_action)
             self.img = str(self.images[self.iter])
             img_name = Path(self.img).name
-            self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot( self.img,img_name, self.iter, len(self.images), keep_view=self.view_locked)
+            self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot( self.img,img_name, self.iter, len(self.images), keep_view=self.view_locked, label=selected_action)
             self.figure.canvas.draw()
 
     def helpButton(self, event):
@@ -422,11 +429,13 @@ class CorrectionsFrame(BaseFrame):
         self.iter = 0
         self.img = str(self.images[self.iter])
         img_name = Path(self.img).name
+        action = self.current_actions[self.iter] if self.perform_actions[self.iter] is None else self.perform_actions[self.iter]
         self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.img,
                                                                                       img_name,
                                                                                       self.iter,
                                                                                       len(self.images),
-                                                                                      keep_view=self.view_locked)
+                                                                                      keep_view=self.view_locked,
+                                                                                      label=action)
         self.action_rdb.SetSelection(self.current_actions[0])
         self.figure.canvas.draw()
 
@@ -464,6 +473,16 @@ class CorrectionsFrame(BaseFrame):
         action_selection = self.action_rdb.GetSelection()
         self.perform_actions[self.iter] = from_action[action_selection]
         print(self.perform_actions[:10])
+
+        img_name = Path(self.img).name
+        action = self.current_actions[self.iter] if self.perform_actions[self.iter] is None else self.perform_actions[self.iter]
+        self.figure, self.axes, self.canvas, self.toolbar = self.image_panel.drawplot(self.img,
+                                                                                      img_name,
+                                                                                      self.iter,
+                                                                                      len(self.images),
+                                                                                      keep_view=self.view_locked,
+                                                                                      label=action)
+        self.figure.canvas.draw()
 
 
 def show(config, config3d, sourceCam, imtypes=["*.png"]):
