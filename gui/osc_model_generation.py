@@ -287,7 +287,7 @@ class OscModelGeneration(BaseFrame):
             files = os.listdir(video_dir_path)
             labels_path = None
             for f in files:
-                v_name = os.path.splitext(os.path.basename(f))[0]
+                v_name = os.path.splitext(os.path.basename(video_path))[0]
                 f_name = os.path.basename(f)
                 # TODO: input should select filtered
                 if f_name.startswith(v_name) and f_name.endswith(label_ending + "_filtered.h5"): #or f_name.endswith(snapshot_string + "_filtered.h5"):

@@ -87,7 +87,7 @@ class ContactModelGeneration(BaseFrame):
         destfolderLbl = wx.StaticText(self.panel, -1, "Dataset Dest Folder:", size=wx.Size(self.WIDTHOFINPUTS, 25))
         self.destfolder = wx.DirPickerCtrl(self.panel, -1)
         self.destfolder.SetPath(
-            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration'])))
+            os.path.join(self.project_path, 'training-datasets', 'iteration-' + str(config_dlc['iteration']), 'contact-dataset'))
 
         # # Button components..
 
@@ -265,7 +265,7 @@ class ContactModelGeneration(BaseFrame):
             # analyze files in video dir path looking for the labels_path pair.
             labels_path = None
             for f in files:
-                v_name = os.path.splitext(os.path.basename(f))[0]
+                v_name = os.path.splitext(os.path.basename(video_path))[0]
                 f_name = os.path.basename(f)
                 if f_name.startswith(v_name) and (f_name.endswith(label_ending + ".csv") or f_name.endswith(label_ending + ".h5")):
                     labels_path = os.path.join(video_dir_path, f)
