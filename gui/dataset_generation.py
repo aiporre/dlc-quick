@@ -81,7 +81,7 @@ class OscilationDataset:
 
     # get coordinates at given time n from a whisker dataframe
     def get_whisker_at(self, whisker_df, n):
-        return whisker_df.iloc[n]
+        return whisker_df.loc[n]
 
     # get the coordinates of the nose
     def get_nose(self):
@@ -207,7 +207,8 @@ class OscilationDataset:
         attemps = 0
         # FIXME: negative segments can be overlapping also..the solution is add neg to windows list
         # FIXME: but it may be cases where the positive windows left no room
-        while attemps < 10 and len(negative_windows) < len(windows):
+        max_attempts = 10 + len(windows)
+        while attemps < max_attempts and len(negative_windows) < len(windows):
             n0_neg = np.random.randint(min_index, max_index)
             n1_neg = n0_neg + int(nperseg)
             if not self.is_windows_overlap(windows, n0_neg, n1_neg):
@@ -215,16 +216,28 @@ class OscilationDataset:
                                      n1_neg / fs,
                                      n0_neg,
                                      min(n1_neg, max_index)])
+                attemps = 0
+            else:
+                attemps += 1
+                print("Warining: negative window couldn't be found maybe: new attempt %d/%d" % (attemps, max_attempts))
         return negative_windows
 
 
     def generate_dataset(self, fs=240, slow_motion=False):
         df_angles_r = self.calculate_angles_side(side='R')
         df_angles_l = self.calculate_angles_side(side='L')
-        windows_r, freqs_r, times_r, Sxx_db_r = self.get_oscilation_windows(df_angles_r, fs=fs)
-        windows_r_neg = self.get_negative_window(df_angles_r, windows_r, fs)
-        windows_l, freqs_l, times_l, Sxx_db_l = self.get_oscilation_windows(df_angles_l, fs=fs)
-        windows_l_neg = self.get_negative_window(df_angles_l, windows_l, fs)
+        if df_angles_r is not None:
+            windows_r, freqs_r, times_r, Sxx_db_r = self.get_oscilation_windows(df_angles_r, fs=fs)
+            windows_r_neg = self.get_negative_window(df_angles_r, windows_r, fs)
+        else:
+            windows_r, freqs_r, times_r, Sxx_db_r = [], np.arange(10), np.arange(10), np.zeros((10, 10))
+            windows_r_neg = []
+        if df_angles_l is not None:
+            windows_l, freqs_l, times_l, Sxx_db_l = self.get_oscilation_windows(df_angles_l, fs=fs)
+            windows_l_neg = self.get_negative_window(df_angles_l, windows_l, fs)
+        else:
+            windows_l, freqs_l, times_l, Sxx_db_l = [], np.arange(10), np.arange(10), np.zeros((10, 10))
+            windows_l_neg = []
         windows = windows_r + windows_l
         windows_neg = windows_r_neg + windows_l_neg
         # unique windows
