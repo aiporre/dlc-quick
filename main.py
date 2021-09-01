@@ -2988,7 +2988,7 @@ class AnalyzeVideos(wx.Frame):
             d.convert_detections2tracklets(self.config, videos=videos, videotype=self.videoType.GetValue(),
                                            shuffle=shuffle_number, trainingsetindex=trainindex,
                                            track_method=self.trackMethod.GetStringSelection(),
-                                           overwrite=True, identity_only=identity_only)
+                                           overwrite=True, identity_only=identity_only, destfolder=destfolder)
 
     def onAddVideo(self, event):
         dialog = wx.FileDialog(None, "Choose input directory", "",
