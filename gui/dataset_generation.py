@@ -318,6 +318,37 @@ class OscilationDataset:
                          'video_name': os.path.basename(self.video_path)}
             np.save(clip_video_path.replace('.avi', '.npy'), clip_data)
 
+    def estimateOscilation(self,fs=240, slow_motion=False):
+        df_angles_r = self.calculate_angles_side(side='R')
+        df_angles_l = self.calculate_angles_side(side='L')
+        if df_angles_r is not None:
+            windows_r, freqs_r, times_r, Sxx_db_r = self.get_oscilation_windows(df_angles_r, fs=fs)
+            mean_angle_r = df_angles_r.mean(axis=1)
+        else:
+            windows_r, freqs_r, times_r, Sxx_db_r = [], np.arange(10), np.arange(10), np.zeros((10, 10))
+            mean_angle_r = None
+        if df_angles_l is not None:
+            windows_l, freqs_l, times_l, Sxx_db_l = self.get_oscilation_windows(df_angles_l, fs=fs)
+            mean_angle_l = df_angles_l.mean(axis=1)
+        else:
+            windows_l, freqs_l, times_l, Sxx_db_l = [], np.arange(10), np.arange(10), np.zeros((10, 10))
+            mean_angle_l = None
+        windows = windows_r + windows_l
+        # make a vid array
+        vid = VideoReaderArray(self.video_path)
+        print('metadata : ', vid.metadata)
+        predictions = [False] * vid.get_n_frames(robust=True)
+        for t0, t1, index0, index1 in windows:
+            for idx in range(index0, index1):
+                predictions[idx] = True
+        angles_r = np.empty(vid.get_n_frames())
+        angles_r[:] = np.NaN
+        angles_r[df_angles_r.index.values] = df_angles_r.values
+        angles_l = np.empty(vid.get_n_frames())
+        angles_l[:] = np.NaN
+        angles_l[df_angles_l.index.values] = df_angles_l.values
+        return predictions, angles_l, angles_r
+
 
 
 class ContactDataset:
@@ -413,6 +444,19 @@ class ContactDataset:
                 # print('at ', i, ' whisker ', whisker_label, ' has ', len(whisker_at_n))
                 interesting_frames.append(i)
         return [j for j in range(video_length) if j not in interesting_frames]
+
+    def estimate_contacts(self):
+        positive_frames = []
+        for whisker_label in self.whisker_labels:
+            # extracting positive frames
+            positive_frames.extend(self.capture_positive_frames(whisker_label=whisker_label))
+        whisker_count = [0] *len(self.video_frames)
+        for p in positive_frames:
+            whisker_count[p] +=1
+        positive_frames = list(set(positive_frames))
+        contacts = [i in positive_frames for i in range(len(self.video_frames))]
+        return whisker_count, contacts
+
 
     def generate_dataset(self):
         prefix = os.path.splitext(os.path.basename(self.video_path))[0]
