@@ -8,7 +8,8 @@ from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import get_snapshots
-from main import MainPanel, parser_yaml, get_radiobutton_status, get_available_gpus, CWD, get_videos
+from main import MainPanel, CWD
+from gui.utils.generic import get_videos, parser_yaml, get_available_gpus, get_radiobutton_status
 
 
 class FilterPredictions(wx.Frame):

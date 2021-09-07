@@ -3,7 +3,8 @@ import os
 
 import wx
 
-from main import MainPanel, CWD, get_videos
+from main import MainPanel, CWD
+from gui.utils.generic import get_videos
 
 
 class AddNewVideos(wx.Frame):

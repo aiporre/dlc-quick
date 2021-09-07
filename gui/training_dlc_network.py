@@ -4,7 +4,8 @@ import sys
 import wx
 
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
-from main import MainPanel, parser_yaml, get_available_gpus
+from main import MainPanel
+from gui.utils.generic import parser_yaml, get_available_gpus
 
 
 class TrainNetwork(wx.Frame):
