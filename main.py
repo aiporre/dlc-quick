@@ -109,34 +109,6 @@ def get_radiobutton_status(radiobuttons):
         return [k for k, v in status.items() if v and not k == 'All']
 
 
-class RedirectText(object):
-    def __init__(self, aWxTextCtrl):
-        self.out = aWxTextCtrl
-
-    def write(self, string):
-        self.out.WriteText(string)
-        wx.CallAfter(self.out.WriteText, string)
-
-
-class Log(wx.Frame):
-    def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Log")
-
-        # Add a panel so it looks the correct on all platforms
-        panel = wx.Panel(self, wx.ID_ANY)
-        log = wx.TextCtrl(panel, wx.ID_ANY, size=(300, 100),
-                          style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
-
-        # Add widgets to a sizer
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(log, 1, wx.ALL | wx.EXPAND, 5)
-        panel.SetSizer(sizer)
-
-        # redirect text here
-        redir = RedirectText(log)
-        sys.stdout = redir
-
-
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super(MainFrame, self).__init__(parent, title=title, size=(640, 500))
