@@ -5,6 +5,8 @@ import wx
 
 from gui.utils.main_panel import MainPanel
 from gui.utils.generic import get_videos
+from gui import static
+STATIC_PATH = os.path.dirname(static.__file__)
 
 
 class AddNewVideos(wx.Frame):
@@ -39,12 +41,12 @@ class AddNewVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image(os.path.join(current_working_dir, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(STATIC_PATH, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(current_working_dir, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(STATIC_PATH, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 
@@ -188,12 +190,12 @@ class NewProjectFrame(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(STATIC_PATH, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.newProjectFrame, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(STATIC_PATH, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.newProjectFrame, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 

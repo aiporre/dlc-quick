@@ -13,7 +13,8 @@ from gui.osc_model_training import WhiskerModelTraining
 from gui.osc_corrections_toolbox import OscCorrections
 from gui.utils.parse_yaml import extractTrainingIndexShuffle, parse_yaml
 from gui.utils.snapshot_index import get_snapshot_index, get_snapshots
-
+from gui import static
+STATIC_PATH = os.path.dirname(static.__file__)
 
 def get_videos(videosList):
     count = videosList.GetItemCount()
@@ -96,12 +97,12 @@ class OscModelGeneration(BaseFrame):
         # # Button components..
 
         # buttons to add video
-        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(STATIC_PATH, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.panel, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(STATIC_PATH, "figures/iconminus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.panel, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 

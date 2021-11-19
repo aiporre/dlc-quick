@@ -8,10 +8,11 @@ from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import get_snapshots
-from gui.utils import STATIC
 from gui.utils.main_panel import MainPanel
 from gui.utils.generic import get_videos, parser_yaml, get_available_gpus, get_radiobutton_status
-
+# TODO: REFACTOR WITH THE METHOD STATIC IN GUI.UTILS
+from gui import static
+STATIC_PATH = os.path.dirname(static.__file__)
 
 class FilterPredictions(wx.Frame):
     def __init__(self, parent, title='filter predictions', config=None, videos=[], shuffle='', track_method=None):
@@ -815,13 +816,12 @@ class AnalyzeVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        print("STATIC PATH: ", STATIC)
-        bmp1 = wx.Image(os.path.join(STATIC, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(STATIC_PATH, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.panel, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(STATIC, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(STATIC_PATH, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.panel, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 
