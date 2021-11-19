@@ -8,7 +8,7 @@ from blockwindow import BlockWindow
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import get_snapshots
-from main import MainPanel
+from gui.utils.main_panel import MainPanel
 from gui.utils.generic import parser_yaml, get_available_gpus, get_radiobutton_status
 
 

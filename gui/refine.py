@@ -8,7 +8,7 @@ from gui.rat_choice_list import RatChoice
 from gui.utils import parse_yaml
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import find_analyzed_data_generic
-from main import MainPanel
+from gui.utils.main_panel import MainPanel
 from gui.utils.generic import parser_yaml
 
 

@@ -9,7 +9,7 @@ from blockwindow import BlockWindow
 import os
 
 from gui.contact_model_generation import ContactModelGeneration
-from gui.create_training_set import CreateTraining
+from gui.create_training_set import DLCCreateTrainingSet
 from gui.evaluate_dlc_network import EvaluaterNetwork
 from gui.extract_frames import ExtractFrames
 from gui.osc_model_generation import OscModelGeneration
@@ -17,6 +17,7 @@ from gui.project_management import AddNewVideos, NewProjectFrame
 from gui.training_dlc_network import TrainNetwork
 from gui.utils import parse_yaml
 from gui.utils.generic import find_yaml
+from gui.utils.main_panel import MainPanel
 from gui.video_analysis import AnalyzeVideos
 from gui.whisker_detection import DetectWhiskers
 from gui.whisker_label_toolbox import LabelWhiskersFrame
@@ -173,13 +174,13 @@ class MainFrame(wx.Frame):
         elif frame_type == 'create new project':
             frame = NewProjectFrame(self.GetParent(), self, config=self.configPath.GetPath())
         elif frame_type == 'add new videos':
-            frame = AddNewVideos(self.GetParent(), config=self.configPath.GetPath())
+            frame = AddNewVideos(self.GetParent(), current_working_dir=CWD, config=self.configPath.GetPath())
         elif frame_type == 'extract frames':
             frame = ExtractFrames(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'detect whiskers':
             frame = DetectWhiskers(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'create training set':
-            frame = CreateTraining(self.GetParent(), config=self.configPath.GetPath())
+            frame = DLCCreateTrainingSet(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'train network':
             frame = TrainNetwork(self.GetParent(), config=self.configPath.GetPath())
         elif frame_type == 'evaluate network':
@@ -223,11 +224,6 @@ class MainFrame(wx.Frame):
         print('===> on config path picked!! ')
         wd = Path(self.configPath.GetPath()).resolve().parents[0]
         os.chdir(str(wd))
-
-
-class MainPanel(wx.Panel):
-    def __init__(self, parent):
-        super(MainPanel, self).__init__(parent)
 
 
 # Object app

@@ -3,12 +3,12 @@ import os
 
 import wx
 
-from main import MainPanel, CWD
+from gui.utils.main_panel import MainPanel
 from gui.utils.generic import get_videos
 
 
 class AddNewVideos(wx.Frame):
-    def __init__(self, parent, title='Add new videos', config=None):
+    def __init__(self, parent, current_working_dir, title='Add new videos', config=None):
         super(AddNewVideos, self).__init__(parent, title=title, size=(640, 500))
         self.addNewVideosFrame = MainPanel(self)
         self.config = config
@@ -39,12 +39,12 @@ class AddNewVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp1 = wx.Image(os.path.join(current_working_dir, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(current_working_dir, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.addNewVideosFrame, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 

@@ -8,7 +8,8 @@ from gui.utils import parse_yaml
 from gui.utils.colors import TerminalColors
 from gui.utils.parse_yaml import extractTrainingIndexShuffle
 from gui.utils.snapshot_index import get_snapshots
-from main import MainPanel, CWD
+from gui.utils import STATIC
+from gui.utils.main_panel import MainPanel
 from gui.utils.generic import get_videos, parser_yaml, get_available_gpus, get_radiobutton_status
 
 
@@ -814,12 +815,13 @@ class AnalyzeVideos(wx.Frame):
         self.videosList.InsertColumn(1, "path", format=wx.LIST_FORMAT_CENTRE, width=self.WIDTHOFINPUTS)
 
         # buttons to add video
-        bmp1 = wx.Image(os.path.join(CWD, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        print("STATIC PATH: ", STATIC)
+        bmp1 = wx.Image(os.path.join(STATIC, "figures/iconplus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonPlus = wx.BitmapButton(self.panel, -1, bmp1, pos=(10, 20))
         self.buttonPlus.Bind(wx.EVT_BUTTON, self.onAddVideo)
 
         # button to remove video
-        bmp2 = wx.Image(os.path.join(CWD, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
+        bmp2 = wx.Image(os.path.join(STATIC, "figures/iconMinus.bmp"), wx.BITMAP_TYPE_BMP).ConvertToBitmap()
         self.buttonMinus = wx.BitmapButton(self.panel, -1, bmp2, pos=(10, 20))
         self.buttonMinus.Bind(wx.EVT_BUTTON, self.onRemoveVideo)
 

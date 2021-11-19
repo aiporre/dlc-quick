@@ -1,6 +1,6 @@
 import wx
 
-from main import MainPanel
+from gui.utils.main_panel import MainPanel
 
 
 class ExtractFrames(wx.Frame):

@@ -2,12 +2,12 @@ import wx
 
 from deeplabcut.utils import skeleton
 from gui.utils import parse_yaml
-from main import MainPanel
+from gui.utils.main_panel import MainPanel
 
 
-class CreateTraining(wx.Frame):
+class DLCCreateTrainingSet(wx.Frame):
     def __init__(self, parent, title='Create training set', config=None):
-        super(CreateTraining, self).__init__(parent, title=title, size=(640, 500))
+        super(DLCCreateTrainingSet, self).__init__(parent, title=title, size=(640, 500))
         self.panel = MainPanel(self)
         self.WIDTHOFINPUTS = 400
         self.config = config
